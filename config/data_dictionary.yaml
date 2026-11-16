@@ -1,0 +1,123 @@
+# Liste blanche (allowlist) des vues que le chatbot a le droit d'interroger.
+# Le LLM ne voit JAMAIS les 220 tables de production, seulement ces vues.
+# Les colonnes sont lues dans PostgreSQL ; ici on ajoute seulement leur description.
+
+data_freshness:            # sert à refuser une période hors des données (évite un « 0 » trompeur)
+  view: analytics.v_visits
+  column: visit_date
+
+fragile_columns:           # colonnes peu fiables : une note est ajoutée à la réponse
+  outcome: >
+    La colonne outcome est mal renseignée (souvent vide après juin 2026).
+    « Guéri » n'est pas défini : ne pas en tirer de statistique fiable.
+
+views:
+  analytics.v_visits:
+    default: true
+    description: >
+      Une ligne = une admission = une visite d'un patient. COUNT(*) compte les visites.
+    keywords: [admission, admissions, visite, visites, visit, hospitalisation, venues]
+    date_column: visit_date
+    columns:
+      visit_key: Identifiant de l'admission.
+      patient_key: Identifiant anonymisé du patient (uniquement dans COUNT(DISTINCT patient_key)).
+      visit_date: Date de l'admission (created_at de la table admissions, fuseau Madagascar).
+      category: Catégorie de l'admission ("Non renseigné" si absente).
+      gender: >
+        Sexe du patient. Valeurs exactes : 'M' (masculin), 'F' (féminin), 'Non renseigné'.
+        Hommes, garçons, men, boys, masculin, male = 'M' ;
+        femmes, filles, women, girls, féminin, female = 'F'.
+        Filtrer avec l'égalité (gender = 'F'), jamais avec ILIKE ni une valeur traduite.
+      age_group: >
+        Tranche d'âge. Valeurs exactes : '0-5', '6-11', '12-17', '18-23', '24-29', '30-35',
+        '36-41', '42-46', '47-52', '53-58', '59-64', '65-70', '70+', 'Non renseigné'.
+      district: District du patient.
+      commune: Commune du patient.
+    answer_note: ""
+
+  analytics.v_patients_masked:
+    description: >
+      Une ligne = un patient dont la fiche n'est pas supprimée (deleted = 0).
+      L'âge est calculé à la date du jour : il change chaque année avec l'anniversaire du patient.
+      Pour l'âge au moment d'une visite, d'une consultation, d'un diagnostic ou d'une sortie,
+      utiliser age_group des vues correspondantes.
+    keywords: [patient, patients, fiche, fiches, dossier, dossiers, âge, age, moyenne d'âge, female, male, girls, boys, women, men, children, age]
+    date_column: registered_at
+    columns:
+      patient_key: Identifiant anonymisé du patient.
+      registered_at: Date de création de la fiche patient.
+      gender: >
+        Sexe du patient. Valeurs exactes : 'M' (masculin), 'F' (féminin), 'Non renseigné'.
+        Hommes, garçons, men, boys, masculin, male = 'M' ;
+        femmes, filles, women, girls, féminin, female = 'F'.
+        Filtrer avec l'égalité (gender = 'F'), jamais avec ILIKE ni une valeur traduite.
+      age: Âge ACTUEL du patient en années complètes (entier, calculé à la date du jour). Vide si la date de naissance est absente ou invalide (négative ou supérieure à 120 ans).
+      age_group: >
+        Tranche d'âge. Valeurs exactes : '0-5', '6-11', '12-17', '18-23', '24-29', '30-35',
+        '36-41', '42-46', '47-52', '53-58', '59-64', '65-70', '70+', 'Non renseigné'.
+      district: District du patient.
+      commune: Commune du patient.
+
+  analytics.v_generalist_consultations:
+    description: >
+      Une ligne = une consultation de médecine générale. Les autres types de consultation
+      (dentaire, interne, externe, pédiatrique) ne sont pas dans cette vue.
+    keywords: [consultation, consultations, généraliste]
+    date_column: consultation_date
+    columns:
+      consultation_key: Identifiant de la consultation.
+      patient_key: Identifiant anonymisé du patient.
+      consultation_date: Date de la consultation.
+      gender: >
+        Sexe du patient. Valeurs exactes : 'M' (masculin), 'F' (féminin), 'Non renseigné'.
+        Hommes, garçons, men, boys, masculin, male = 'M' ;
+        femmes, filles, women, girls, féminin, female = 'F'.
+        Filtrer avec l'égalité (gender = 'F'), jamais avec ILIKE ni une valeur traduite.
+      age_group: >
+        Tranche d'âge. Valeurs exactes : '0-5', '6-11', '12-17', '18-23', '24-29', '30-35',
+        '36-41', '42-46', '47-52', '53-58', '59-64', '65-70', '70+', 'Non renseigné'.
+      district: District du patient.
+      commune: Commune du patient.
+      outcome: Issue de la consultation (peu fiable, voir fragile_columns).
+
+  analytics.v_diagnoses:
+    description: >
+      Une ligne = un diagnostic posé. Une visite peut avoir plusieurs diagnostics :
+      COUNT(*) compte des diagnostics, pas des patients.
+    keywords: [diagnostic, diagnostics, maladie, maladies, pathologie, pathologies, cim, icd10, international code, code international]
+    date_column: diagnosis_date
+    columns:
+      diagnosis_key: Identifiant du diagnostic.
+      patient_key: Identifiant anonymisé du patient.
+      diagnosis_date: Date du diagnostic.
+      diagnosis_label: Libellé du diagnostic ("Non renseigné" si absent).
+      icd10_code: Code CIM-10 (vide si non renseigné).
+      gender: >
+        Sexe du patient. Valeurs exactes : 'M' (masculin), 'F' (féminin), 'Non renseigné'.
+        Hommes, garçons, men, boys, masculin, male = 'M' ;
+        femmes, filles, women, girls, féminin, female = 'F'.
+        Filtrer avec l'égalité (gender = 'F'), jamais avec ILIKE ni une valeur traduite.
+      age_group: >
+        Tranche d'âge. Valeurs exactes : '0-5', '6-11', '12-17', '18-23', '24-29', '30-35',
+        '36-41', '42-46', '47-52', '53-58', '59-64', '65-70', '70+', 'Non renseigné'.
+      district: District du patient.
+
+  analytics.v_discharges:
+    description: >
+      Une ligne = une sortie (dismissal). patient_dead = true si le patient est décédé,
+      false s'il est vivant, NULL si inconnu. La colonne patient_dead fait foi pour la mortalité.
+    keywords: [décès, deces, décédé, mortalité, mortalite, sortie, sorties, mort, deaths]
+    date_column: discharge_date
+    columns:
+      discharge_key: Identifiant de la sortie.
+      patient_key: Identifiant anonymisé du patient.
+      discharge_date: Date de la sortie.
+      patient_dead: Vrai si le patient est décédé, faux si vivant, vide si inconnu.
+      gender: >
+        Sexe du patient. Valeurs exactes : 'M' (masculin), 'F' (féminin), 'Non renseigné'.
+        Hommes, garçons, men, boys, masculin, male = 'M' ;
+        femmes, filles, women, girls, féminin, female = 'F'.
+        Filtrer avec l'égalité (gender = 'F'), jamais avec ILIKE ni une valeur traduite.
+      age_group: >
+        Tranche d'âge. Valeurs exactes : '0-5', '6-11', '12-17', '18-23', '24-29', '30-35',
+        '36-41', '42-46', '47-52', '53-58', '59-64', '65-70', '70+', 'Non renseigné'.

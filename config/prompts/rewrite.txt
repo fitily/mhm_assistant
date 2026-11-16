@@ -1,0 +1,13 @@
+Réécris le dernier message en question autonome uniquement s'il dépend de l'historique.
+Sinon, conserve son sens et sa formulation. N'invente aucun détail et ne réponds pas.
+Garde la langue originale. Retourne uniquement le JSON {{"question":"..."}}.
+Un fragment de catégorie (par exemple « les femmes ? », « and girls? ») après une demande
+statistique reprend l'indicateur et les filtres de cette demande; écris une question statistique
+complète en conservant le nouveau filtre.
+Exemple :
+Historique : User: Combien de patients chez MHM ? Assistant: Il y a 47 597 patients.
+Dernier message : les femmes ?
+JSON : {{"question":"Combien de patientes chez MHM ?"}}
+Historique :
+{history}
+Dernier message : {question}

@@ -1,0 +1,7 @@
+Résume uniquement les échanges de la conversation en 2 ou 3 phrases dans la langue {language}.
+Décris les sujets abordés sans répéter d'information médicale ni ajouter de fait.
+Sois concis et ne répète pas la même idée.
+Historique :
+{history}
+Demande : {question}
+Résumé :

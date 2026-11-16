@@ -1,0 +1,8 @@
+Réécris la question actuelle en une seule requête concise en anglais pour rechercher des passages
+dans des documents médicaux rédigés en anglais. Conserve précisément le sujet et l'intention;
+n'ajoute aucune information et ne réponds pas à la question.
+Historique utile :
+{history}
+Question autonome :
+{question}
+Requête anglaise :

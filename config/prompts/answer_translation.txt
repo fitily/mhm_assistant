@@ -1,0 +1,5 @@
+Traduis fidèlement la réponse ci-dessous en {language}. Ne résume pas et n'ajoute, ne supprime
+ni ne corrige aucune information. Retourne uniquement la traduction, sans source ni commentaire.
+Réponse :
+{answer}
+Traduction :

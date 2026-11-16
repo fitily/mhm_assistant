@@ -1,0 +1,31 @@
+definitions:
+  patient: "Fiche non supprimée de la table patients (deleted = 0)."
+  admission: "Une ligne de admissions = une visite."
+  consultation: "Répartie entre plusieurs tables : généraliste, dentaire, interne, externe."
+  date_de_reference: "created_at pour toutes les statistiques mensuelles."
+  mortalite: "La colonne patient_dead de dismissals fait foi."
+  external_consultation: "Patient référé vers un autre hôpital."
+  internal_consultation: "Consultation du personnel MHM auprès de patients hospitalisés."
+  baby_sicknesses: "Consultations pédiatriques."
+
+age_groups:   # 13 tranches (la logique SQL est dans data/analytics/views/00_functions.sql)
+  - "0-5"
+  - "6-11"
+  - "12-17"
+  - "18-23"
+  - "24-29"
+  - "30-35"
+  - "36-41"
+  - "42-46"
+  - "47-52"
+  - "53-58"
+  - "59-64"
+  - "65-70"
+  - "plus de 70"
+
+undefined_terms:   # termes pour lesquels le chatbot doit refuser de calculer
+  - pattern: "gu[ée]ri|gu[ée]rison|cured|recovered|recovery"
+    answer: >
+      « Guéri » n'a pas encore de définition validée : les patients ne reviennent pas
+      confirmer leur guérison et la colonne outcome est peu renseignée. Je ne peux donc pas
+      calculer ce chiffre de façon fiable. Je peux donner le nombre de sorties ou de décès.

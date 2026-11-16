@@ -1,0 +1,14 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+logs/
+node_modules/
+dist/
+# Documents réels et données : jamais dans Git
+data/documents/*
+!data/documents/.gitkeep
+*.pdf
+*.dump
+*.sql.gz

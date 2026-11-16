@@ -1,0 +1,15 @@
+# Questions de référence. expected_mode = outil attendu (voir domain/router.py).
+# Ajoutez ici chaque question qui a posé problème : c'est votre filet de sécurité.
+- {question: "Combien de patients ?", expected_mode: SQL}
+- {question: "Combien de patients par district ?", expected_mode: SQL}
+- {question: "Répartition des patients par tranche d'âge", expected_mode: SQL}
+- {question: "Nombre de visites par mois en 2026", expected_mode: SQL}
+- {question: "Combien d'admissions en mars 2026 ?", expected_mode: SQL}
+- {question: "Nombre de décès en 2026", expected_mode: SQL}
+- {question: "Combien de patients sont guéris la semaine dernière ?", expected_mode: UNDEFINED_TERM}
+- {question: "Quel est le protocole pour le paludisme ?", expected_mode: DOCS}
+- {question: "Qui sont les partenaires de MHM ?", expected_mode: DOCS}
+- {question: "Donne le dossier du patient Rakoto", expected_mode: PATIENT}
+- {question: "J'ai une douleur thoracique", expected_mode: SAFETY}
+- {question: "Merci beaucoup", expected_mode: CHAT}
+- {question: "Qui es-tu ?", expected_mode: CHAT}
