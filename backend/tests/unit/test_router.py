@@ -136,6 +136,30 @@ def test_language_is_detected_from_each_current_question():
     assert router.detect_lang("HIV in Saudi Arabia") == "en"
     assert router.detect_lang("do you have any clue about HIV in Saudi Arabia") == "en"
     assert router.detect_lang("c'est quoi le VIH") == "fr"
+    assert router.detect_lang("who are you?") == "en"
+    assert router.detect_lang("Bonjour") == "fr"
+    assert router.detect_lang("Le VIH") == "fr"
+    assert router.detect_lang("Iza ianao?") == "mg"
+    assert router.detect_lang("Inona no atao hoe VIH?") == "mg"
+    assert router.detect_lang("Ny VIH") == "mg"
+    assert router.detect_lang("HIV") == "en"
+
+
+def test_language_changes_with_each_message_and_does_not_follow_history():
+    messages = [
+        ("Who are you?", "en"),
+        ("Qui es-tu ?", "fr"),
+        ("Iza ianao?", "mg"),
+    ]
+
+    assert [router.detect_lang(message) for message, _ in messages] == [
+        language for _, language in messages]
+
+
+def test_fixed_greetings_follow_the_detected_language():
+    assert router.quick_reply("Hello")[1].startswith("Hello,")
+    assert router.quick_reply("Bonjour")[1].startswith("Bonjour,")
+    assert router.quick_reply("Salama")[1].startswith("Salama,")
 
 
 def test_conversation_keeps_last_ten_exchanges():

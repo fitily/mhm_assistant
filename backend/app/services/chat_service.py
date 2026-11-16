@@ -27,10 +27,27 @@ from app.infrastructure.llm import ollama
 NO_DOC = {
     "fr": "Je ne trouve pas cette information dans les documents disponibles.",
     "en": "I cannot find this information in the available documents.",
+    "mg": "Tsy hitako ao amin'ireo antontan-taratasy misy izany.",
 }
 DOCS_DOWN = {
     "fr": "La base documentaire n'est pas disponible pour le moment.",
     "en": "The document base is not available at the moment.",
+    "mg": "Tsy misy amin'izao fotoana izao ny tahirin-kevitra.",
+}
+ANALYSIS_DOWN = {
+    "fr": "L'analyse n'est pas disponible pour le moment.",
+    "en": "The analysis is not available at the moment.",
+    "mg": "Tsy misy amin'izao fotoana izao ny fanadihadiana.",
+}
+OUT_OF_RANGE = {
+    "fr": "La période demandée est en dehors de la plage de données disponible.",
+    "en": "The requested period is outside the available data range.",
+    "mg": "Any ivelan'ny fe-potoana misy ny angona ny vanim-potoana nangatahana.",
+}
+NO_RESULT = {
+    "fr": "Aucun résultat.",
+    "en": "No results.",
+    "mg": "Tsy misy valiny.",
 }
 _KNOWLEDGE = r"(?:(?:hiv(?:\s+transmission)?\s+)?knowledge(?:\s+(?:scores?|levels?))?|connaissances?)"
 _ATTITUDES = r"(?:(?:stigmatizing\s+|stigmatisantes?\s+)?attitudes?)"
@@ -55,21 +72,73 @@ _KNOWLEDGE_ATTITUDE_LINKS = (
 LLM_DOWN = {
     "fr": "Le modèle de langage n'est pas disponible pour le moment. Réessayez dans un instant.",
     "en": "The language model is not available at the moment. Please try again shortly.",
+    "mg": "Tsy misy amin'izao fotoana izao ny maodely fiteny. Andramo indray afaka kelikely.",
 }
 LLM_TIMEOUT = {
     "fr": "Le délai d’attente de l’IA a été dépassé.",
     "en": "The AI request timed out.",
+    "mg": "Nihoatra ny fe-potoana fiandrasana ny fangatahana tamin'ny IA.",
+}
+ANALYSIS_ERROR = {
+    "fr": "L'analyse a échoué. Aucun chiffre n'a été calculé.",
+    "en": "The analysis failed. No figures were calculated.",
+    "mg": "Tsy nahomby ny fanadihadiana. Tsy nisy tarehimarika voakajy.",
+}
+NO_VALUE = {
+    "fr": "Aucune valeur numérique n'est disponible.",
+    "en": "No numeric value is available.",
+    "mg": "Tsy misy sanda isa azo ampiasaina.",
+}
+SINGLE_VALUE = {
+    "fr": "Le nombre correspondant est {value}.",
+    "en": "The matching number is {value}.",
+    "mg": "Izao ny isa mifanaraka amin'izany: {value}.",
+}
+RESULTS_CALCULATED = {
+    "fr": "Voici les résultats calculés.",
+    "en": "Here are the calculated results.",
+    "mg": "Ireto ny valin'ny kajy.",
 }
 
 
+def _ensure_language(text: str, language: str, stage: str) -> str:
+    if not text.strip() or router.detect_lang(text) == language:
+        return text
+    prompt = prompts.render(
+        "answer_translation", language=router.language_name(language), answer=text)
+    translated = ollama.complete(
+        prompt, max(200, ollama.estimate_tokens(text) + 60), temperature=0,
+        stage=f"traduction {stage}").strip()
+    if not translated or router.detect_lang(translated) != language:
+        return LLM_DOWN[language]
+    return translated
+
+
+def _is_language_prefix(text: str, language: str) -> bool:
+    if router.detect_lang(text) != language:
+        return False
+    words = set(re.findall(r"[a-zàâçéèêëîïôûùüÿœ']+", text.casefold()))
+    if len(words) >= 2:
+        return True
+    markers = {
+        "en": {"hello", "hi", "yes", "thanks", "who", "what"},
+        "fr": {"bonjour", "oui", "merci", "salut", "je", "le", "la", "les", "ça"},
+        "mg": {"salama", "misaotra", "eny", "ahoana", "ianao", "ny"},
+    }
+    return bool(words & markers[language])
+
+
 def _compose(question: str, sql: str, columns: list[str], rows: list[tuple],
-             notes: list[str], history, language: str = "fr") -> str:
-    body = format_result(columns, rows) if rows else "Aucun résultat."
-    note_text = "\n".join(notes) or "Aucune."
+             notes: list[str], history, language: str = "en") -> str:
+    body = format_result(columns, rows, language) if rows else NO_RESULT[language]
+    note_text = "\n".join(notes) or {
+        "en": "None.", "fr": "Aucune.", "mg": "Tsy misy.",
+    }[language]
     candidate = ollama.complete(prompts.render(
         "summary", history=format_history(history or []), question=question, sql=sql or "(aucun)",
-        columns=", ".join(column_label(c) for c in columns) or "(aucune)",
+        columns=", ".join(column_label(c, language) for c in columns) or "(none)",
         result=body, notes=note_text, language=router.language_name(language)), 300)
+    candidate = _ensure_language(candidate, language, "SQL")
     prose = "\n".join(line for line in candidate.splitlines()
                       if not line.lstrip().startswith("|")
                       and not re.fullmatch(r"[\s|:+-]+", line))
@@ -82,20 +151,17 @@ def _compose(question: str, sql: str, columns: list[str], rows: list[tuple],
     elif scalar:
         value = rows[0][0]
         if value is None:
-            summary = ("Aucune valeur numérique n'est disponible." if language == "fr"
-                       else "No numeric value is available.")
+            summary = NO_VALUE[language]
         else:
-            summary = (
-                f"Le nombre correspondant est {fmt_value(value)}." if language == "fr"
-                else f"The matching number is {fmt_value(value)}.")
+            summary = SINGLE_VALUE[language].format(value=fmt_value(value))
     else:
-        summary = (("Voici les résultats calculés." if language == "fr"
-                    else "Here are the calculated results.") if rows else note_text)
+        summary = RESULTS_CALCULATED[language] if rows else note_text
     parts = [summary]
     if rows and not scalar and (len(rows) > 1 or len(columns) > 1 or not valid):
         parts.append(body)
     if notes and rows:
-        parts.append("\n".join(f"À noter : {n}" for n in notes))
+        note_prefix = {"en": "Note:", "fr": "À noter :", "mg": "Marihina:"}[language]
+        parts.append("\n".join(f"{note_prefix} {n}" for n in notes))
     return "\n\n".join(parts)
 
 
@@ -103,33 +169,36 @@ def _tabular(mode: str, question: str, history, runner, language: str) -> Answer
     try:
         run = runner()
     except ConfigurationError as exc:
-        return AnswerResult(f"Analyse indisponible : {exc}", "SQL",
+        return AnswerResult(ANALYSIS_DOWN[language], "SQL",
                             raw_result=str(exc), audit_stage="configuration")
     except OutOfRange as exc:
         try:
             text = _compose(question, "", [], [], [str(exc)], history, language)
         except httpx.HTTPError:
-            text = str(exc)
+            text = OUT_OF_RANGE[language]
         return AnswerResult(text, "SQL", audit_stage="plage de dates")
     except QueryError as exc:
-        text = f"L'analyse a échoué à l'étape « {exc.stage} ». Aucun chiffre n'a été calculé."
+        text = ANALYSIS_ERROR[language]
         return AnswerResult(text, "SQL", exc.sql, exc.details, audit_stage=exc.stage)
     try:
-        text = _compose(question, run.sql, run.columns, run.rows, run.notes, history, language)
+        notes = [_ensure_language(note, language, "SQL note") for note in run.notes]
+        text = _compose(question, run.sql, run.columns, run.rows, notes, history, language)
     except httpx.HTTPError as exc:
         return AnswerResult(LLM_DOWN[router.detect_lang(question)], "SQL",
                             run.sql, str(exc)[:300], audit_stage="llm")
     return AnswerResult(
         text, mode, run.sql,
-        format_result(run.columns, run.rows) if run.rows else "Aucune ligne.",
-        notes=tuple(run.notes),
-        data={"columns": [column_label(c) for c in run.columns],
+        format_result(run.columns, run.rows, language) if run.rows else NO_RESULT[language],
+        notes=tuple(notes),
+        data={"columns": [column_label(c, language) for c in run.columns],
               "rows": [[fmt_value(v) for v in r] for r in run.rows]})
 
 
-def _doc_sources(text: str, sources) -> str:
-    citations = " ; ".join(label for _, label in sources)
-    return f"{text}\n\nSources : {citations}" if citations else text
+def _doc_sources(text: str, sources, language: str) -> str:
+    separator = " ; " if language == "fr" else "; "
+    citations = separator.join(label for _, label in sources)
+    heading = {"en": "Sources:", "fr": "Sources :", "mg": "Loharano:"}[language]
+    return f"{text}\n\n{heading} {citations}" if citations else text
 
 
 def _doc_error(message: str, context: str,
@@ -207,6 +276,8 @@ def _guard_research_claims(reply: str, context: str, language: str) -> str:
         "The excerpts report knowledge findings and attitudes separately; "
         "they do not state whether those measures are associated."
         if language == "en" else
+        "Ny sombiny dia manasaraka ny fahalalana sy ny fihetsika; tsy milaza izy ireo raha misy fifandraisana."
+        if language == "mg" else
         "Les extraits présentent séparément les résultats sur les connaissances et les attitudes; "
         "ils ne précisent pas si ces mesures sont liées.")
     debug_trace("DOCS garde", reason="lien connaissances-attitudes non étayé")
@@ -237,10 +308,11 @@ def _guard_research_percentages(reply: str, context: str, language: str) -> str:
     debug_trace("DOCS garde", reason="pourcentage non étayé")
     if kept:
         return " ".join(kept)
-    return (
-        "The excerpts do not support the stated percentage, so I cannot report it."
-        if language == "en" else
-        "Les extraits ne justifient pas le pourcentage indiqué; je ne peux pas le rapporter.")
+    return {
+        "en": "The excerpts do not support the stated percentage, so I cannot report it.",
+        "fr": "Les extraits ne justifient pas le pourcentage indiqué; je ne peux pas le rapporter.",
+        "mg": "Tsy manamarina ilay isan-jato voalaza ny sombiny, ka tsy azoko averina izany.",
+    }[language]
 
 
 def _docs(question: str, lang: str, history, on_docs_wait: Callable[[], None] | None = None,
@@ -250,7 +322,12 @@ def _docs(question: str, lang: str, history, on_docs_wait: Callable[[], None] | 
     except httpx.TimeoutException as exc:
         return _doc_error(LLM_TIMEOUT[lang], "", str(exc)[:300], "llm_timeout")
     except ConfigurationError as exc:
-        return AnswerResult(f"Recherche documentaire indisponible : {exc}", "DOCS",
+        message = {
+            "en": "Document search is not available at the moment.",
+            "fr": "La recherche documentaire n'est pas disponible pour le moment.",
+            "mg": "Tsy misy amin'izao fotoana izao ny fikarohana antontan-taratasy.",
+        }[lang]
+        return AnswerResult(message, "DOCS",
                             audit_stage="configuration")
     except Exception as exc:     # table documents_kb absente, base arrêtée… : pas de trace brute
         return AnswerResult(DOCS_DOWN[lang], "DOCS", raw_result=str(exc)[:300],
@@ -267,6 +344,21 @@ def _docs(question: str, lang: str, history, on_docs_wait: Callable[[], None] | 
         if on_docs_wait:
             on_docs_wait()
         buffered_sentence = ""
+        pending_language_tokens: list[str] = []
+        language_stream_started = False
+
+        def emit_language_safe(piece: str) -> None:
+            nonlocal language_stream_started
+            if not on_docs_token:
+                return
+            if language_stream_started:
+                on_docs_token(piece)
+                return
+            pending_language_tokens.append(piece)
+            if _is_language_prefix("".join(pending_language_tokens), lang):
+                on_docs_token("".join(pending_language_tokens))
+                pending_language_tokens.clear()
+                language_stream_started = True
 
         def emit_guarded(piece: str) -> None:
             nonlocal buffered_sentence
@@ -277,15 +369,16 @@ def _docs(question: str, lang: str, history, on_docs_wait: Callable[[], None] | 
             buffered_sentence = completed.pop()
             for sentence in completed:
                 guarded = _guard_research_claims(sentence, context, lang)
-                on_docs_token(_guard_research_percentages(guarded, context, lang))
+                emit_language_safe(_guard_research_percentages(guarded, context, lang))
 
         reply = ollama.stream(
             prompt, predict=200,
-            emit=emit_guarded if on_docs_token and research_context else on_docs_token,
+            emit=(emit_guarded if on_docs_token and research_context
+                  else emit_language_safe if on_docs_token else None),
             stage="génération DOCS", num_ctx=4096)
         if buffered_sentence and on_docs_token and research_context:
             guarded = _guard_research_claims(buffered_sentence, context, lang)
-            on_docs_token(_guard_research_percentages(guarded, context, lang))
+            emit_language_safe(_guard_research_percentages(guarded, context, lang))
         clean_reply = _clean_doc_reply(reply)
         clean_reply = _guard_research_claims(clean_reply, context, lang)
         clean_reply = _guard_research_percentages(clean_reply, context, lang)
@@ -324,9 +417,11 @@ def _docs(question: str, lang: str, history, on_docs_wait: Callable[[], None] | 
         return _doc_error(LLM_DOWN[lang], context, stage="response_language")
     if not router.has_useful_content(clean_reply):
         debug_trace("DOCS rejet", reason="filtre de réponse inutile", answer=clean_reply)
-        return AnswerResult(_doc_sources(NO_DOC[lang], sources), "DOCS",
+        return AnswerResult(_doc_sources(NO_DOC[lang], sources, lang), "DOCS",
                             sources=tuple(sources))
-    text = _doc_sources(clean_reply, sources)
+    if on_docs_token and not language_stream_started:
+        on_docs_token(clean_reply)
+    text = _doc_sources(clean_reply, sources, lang)
     return AnswerResult(text, "DOCS", sources=tuple(sources))
 
 
@@ -345,6 +440,7 @@ def _general(question: str, original: str, lang: str, history) -> AnswerResult:
                             language=router.language_name(lang))
     try:
         reply = ollama.complete(prompt, 300, temperature=0.3)
+        reply = _ensure_language(reply, lang, "CHAT")
     except Exception as exc:
         return AnswerResult(LLM_DOWN[lang], "CHAT", raw_result=str(exc)[:300],
                             audit_stage="llm")
@@ -363,12 +459,12 @@ def _answer(question: str, original: str, forced, history,
     if forced:
         quick = router.quick_reply(question, allow_chat_replies=False)
         if quick:
-            return AnswerResult(quick[1], "CHAT")
+            return AnswerResult(_ensure_language(quick[1], lang, "réponse rapide"), "CHAT")
         mode = forced
     else:
         assert decision is not None
         if decision.response:
-            return AnswerResult(decision.response, "CHAT")
+                return AnswerResult(_ensure_language(decision.response, lang, "réponse rapide"), "CHAT")
         mode = decision.name.upper()
     today = dt.datetime.now(get_settings().tz).date()
     period = parse_period(normalize_question(question), today)
@@ -384,10 +480,16 @@ def answer(question: str, *, forced: str | None = None, history=None,
            user: str = "inconnu", on_docs_wait: Callable[[], None] | None = None,
            on_docs_token: Callable[[str], None] | None = None) -> AnswerResult:
     question = " ".join(question.split())
+    language = router.detect_lang(question)
     if not question:
-        return AnswerResult("Veuillez saisir une question.", "CHAT")
+        return AnswerResult("Please enter a question.", "CHAT")
     if len(question) > get_settings().max_question_chars:
-        return AnswerResult("Veuillez raccourcir la question (2 000 caractères maximum).", "CHAT")
+        messages = {
+            "en": "Please shorten your question (maximum 2,000 characters).",
+            "fr": "Veuillez raccourcir la question (2 000 caractères maximum).",
+            "mg": "Fohay kokoa ny fanontanianao azafady (tsy mihoatra ny litera 2 000).",
+        }
+        return AnswerResult(messages[language], "CHAT")
     if forced and forced not in {"SQL", "DOCS"}:
         raise ValueError("Le mode forcé doit être SQL ou DOCS.")
     debug_trace(
@@ -402,7 +504,6 @@ def answer(question: str, *, forced: str | None = None, history=None,
             decision = router.route(question, history)
             standalone = decision.question
     except httpx.TimeoutException as exc:
-        language = router.detect_lang(question)
         result = AnswerResult(LLM_TIMEOUT[language], forced or "CHAT",
                               raw_result=str(exc)[:300], audit_stage="llm_timeout")
         audit(user, question, result.mode, result.audit_stage, None, None)
@@ -416,11 +517,12 @@ def answer(question: str, *, forced: str | None = None, history=None,
     if not router.has_useful_content(result.text):
         debug_trace("Réponse rejetée", reason="filtre de réponse inutile",
                     mode=result.mode, answer=result.text)
-        language = router.detect_lang(question)
-        message = ("Je n'ai pas pu formuler une réponse utile. Pouvez-vous préciser votre demande ?"
-                   if language == "fr" else
-                   "I couldn't produce a useful answer. Could you clarify your request?")
-        result = replace(result, text=message)
+        messages = {
+            "fr": "Je n'ai pas pu formuler une réponse utile. Pouvez-vous préciser votre demande ?",
+            "mg": "Tsy nahavita namorona valiny mahasoa aho. Azafady, hazavao kokoa ny fangatahanao.",
+            "en": "I couldn't produce a useful answer. Could you clarify your request?",
+        }
+        result = replace(result, text=messages[language])
     audit(user, shown, result.mode, result.audit_stage, result.sql,
           len(result.data["rows"]) if result.data else None)
     return result

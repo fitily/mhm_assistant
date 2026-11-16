@@ -38,7 +38,7 @@ def _relevant_excerpt(content: str, question: str, limit: int = 600) -> str:
         if metadata_match and metadata_match.group("section").casefold() == "abstract"
         else None)
     if abstract_results:
-        start = max(0, abstract_results.start() - 40)
+        start = abstract_results.start()
     else:
         best = max(
             sentences,
@@ -192,7 +192,7 @@ def _rank_hits(retrieved: list[dict], count: int) -> tuple[list[dict], bool]:
 
 
 def _english_query(question: str, history, language: str) -> str:
-    if language != "fr":
+    if language == "en":
         return question
     prompt = prompts.render("search_query", question=question,
                             history=format_history(history or []))

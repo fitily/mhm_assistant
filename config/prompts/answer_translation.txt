@@ -1,5 +1,5 @@
-Traduis fidèlement la réponse ci-dessous en {language}. Ne résume pas et n'ajoute, ne supprime
-ni ne corrige aucune information. Retourne uniquement la traduction, sans source ni commentaire.
-Réponse :
+Translate the answer below faithfully into {language}. Do not summarize, add, remove, or alter any information.
+Return only the translation, without sources or commentary.
+Answer:
 {answer}
-Traduction :
+Translation:

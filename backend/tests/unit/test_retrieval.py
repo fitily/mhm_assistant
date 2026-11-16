@@ -31,6 +31,18 @@ def test_french_query_is_translated_before_vector_search(monkeypatch):
     assert sources == [(0.56, "guide.pdf - page 1")]
 
 
+def test_malagasy_query_is_translated_before_vector_search(monkeypatch):
+    seen = []
+    monkeypatch.setattr(
+        documents.ollama, "complete",
+        lambda prompt, *args, **kwargs: seen.append(prompt) or "What are HIV symptoms?")
+
+    translated = documents._english_query("Inona no soritr'aretin'ny VIH?", [], "mg")
+
+    assert translated == "What are HIV symptoms?"
+    assert "English search query" in seen[0]
+
+
 def test_empty_retrieval_does_not_call_the_llm(monkeypatch):
     monkeypatch.setattr(chat_service, "get_doc_context", lambda *args: ("", []))
 

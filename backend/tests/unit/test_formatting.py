@@ -10,7 +10,8 @@ def test_fmt_value():
 
 
 def test_single_value_result():
-    assert format_result(["total_patients"], [(47597,)]) == "Patients : 47\u202f597"
+    assert format_result(["total_patients"], [(47597,)]) == "Patients: 47\u202f597"
+    assert format_result(["total_patients"], [(47597,)], "fr") == "Patients : 47\u202f597"
 
 
 def test_table_and_empty_table():
@@ -26,7 +27,14 @@ def test_grounded_rejects_invented_numbers():
 
 
 def test_french_table_headers_and_thin_space():
-    out = format_result(["age_group", "total_admissions"], [("18-23", 47597)])
+    out = format_result(["age_group", "total_admissions"], [("18-23", 47597)], "fr")
     assert "Tranche d'âge" in out
     assert "Admissions" in out
     assert "47\u202f597" in out
+
+
+def test_english_and_malagasy_table_headers():
+    columns = ["age_group", "total_patients"]
+
+    assert "Age group" in format_result(columns, [("18-23", 10)], "en")
+    assert "Sokajin-taona" in format_result(columns, [("18-23", 10)], "mg")

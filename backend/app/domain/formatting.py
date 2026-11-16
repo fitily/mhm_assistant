@@ -11,30 +11,31 @@ _NUMBER = re.compile(r"\d+(?:[.,]\d+)?")
 # Séparateur de milliers : espace, espace insécable (\u00a0), espace fine (\u202f) ou virgule.
 _THOUSANDS = re.compile(r"(?<=\d)[\u00a0\u202f ,](?=\d{3}\b)")
 _COLUMN_LABELS = {
-    "total_patients": "Patients",
-    "patients": "Patients",
-    "total_admissions": "Admissions",
-    "admissions": "Admissions",
-    "total_deaths": "Décès",
-    "total_consultations": "Consultations",
-    "total_diagnoses": "Diagnostics",
-    "total_visits": "Visites",
-    "patient_count": "Patients",
-    "visit_count": "Admissions",
-    "count": "Nombre",
-    "n": "Nombre",
-    "age_group": "Tranche d'âge",
-    "gender": "Sexe",
-    "district": "District",
-    "commune": "Commune",
-    "month": "Mois",
-    "visit_date": "Date de visite",
-    "diagnosis_label": "Diagnostic",
+    "total_patients": {"en": "Patients", "fr": "Patients", "mg": "Marary"},
+    "patients": {"en": "Patients", "fr": "Patients", "mg": "Marary"},
+    "total_admissions": {"en": "Admissions", "fr": "Admissions", "mg": "Fampidirana"},
+    "admissions": {"en": "Admissions", "fr": "Admissions", "mg": "Fampidirana"},
+    "total_deaths": {"en": "Deaths", "fr": "Décès", "mg": "Maty"},
+    "total_consultations": {"en": "Consultations", "fr": "Consultations", "mg": "Fizahana"},
+    "total_diagnoses": {"en": "Diagnoses", "fr": "Diagnostics", "mg": "Diagnostika"},
+    "total_visits": {"en": "Visits", "fr": "Visites", "mg": "Fitsidihana"},
+    "patient_count": {"en": "Patients", "fr": "Patients", "mg": "Marary"},
+    "visit_count": {"en": "Admissions", "fr": "Admissions", "mg": "Fampidirana"},
+    "count": {"en": "Count", "fr": "Nombre", "mg": "Isa"},
+    "n": {"en": "Count", "fr": "Nombre", "mg": "Isa"},
+    "age_group": {"en": "Age group", "fr": "Tranche d'âge", "mg": "Sokajin-taona"},
+    "gender": {"en": "Gender", "fr": "Sexe", "mg": "Lahy/Vavy"},
+    "district": {"en": "District", "fr": "District", "mg": "Distrika"},
+    "commune": {"en": "Commune", "fr": "Commune", "mg": "Kaominina"},
+    "month": {"en": "Month", "fr": "Mois", "mg": "Volana"},
+    "visit_date": {"en": "Visit date", "fr": "Date de visite", "mg": "Datin'ny fitsidihana"},
+    "diagnosis_label": {"en": "Diagnosis", "fr": "Diagnostic", "mg": "Diagnostika"},
 }
 
 
-def column_label(name: str) -> str:
-    return _COLUMN_LABELS.get(name.casefold(), name.replace("_", " ").capitalize())
+def column_label(name: str, language: str = "en") -> str:
+    labels = _COLUMN_LABELS.get(name.casefold())
+    return labels.get(language, labels["en"]) if labels else name.replace("_", " ").capitalize()
 
 
 def fmt_value(value) -> str:
@@ -51,11 +52,12 @@ def fmt_value(value) -> str:
     return str(value)
 
 
-def format_result(columns: list[str], rows: list[tuple]) -> str:
-    labels = [column_label(c) for c in columns]
+def format_result(columns: list[str], rows: list[tuple], language: str = "en") -> str:
+    labels = [column_label(c, language) for c in columns]
     if len(rows) == 1 and len(columns) == 1:
-        label = labels[0].strip() or "Résultat"
-        return f"{label} : {fmt_value(rows[0][0])}"
+        label = labels[0].strip() or {"en": "Result", "fr": "Résultat", "mg": "Valiny"}[language]
+        separator = " : " if language == "fr" else ": "
+        return f"{label}{separator}{fmt_value(rows[0][0])}"
     table = [[fmt_value(v)[:40] for v in row] for row in rows]
     widths = [max([len(c)] + [len(r[i]) for r in table]) for i, c in enumerate(labels)]
     lines = [" | ".join(c.ljust(w) for c, w in zip(labels, widths)),

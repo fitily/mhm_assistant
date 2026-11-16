@@ -40,7 +40,11 @@ def chat_stream(req: ChatRequest, user: str = Depends(current_user)) -> Streamin
             result = chat_service.answer(
                 req.question, forced=req.mode, history=memory.history, user=user,
                 on_docs_wait=lambda: events.put(
-                    ("status", {"text": f"{ASSISTANT_NAME}> Recherche dans les documents…"})),
+                    ("status", {"text": {
+                        "en": f"{ASSISTANT_NAME}> Searching the documents…",
+                        "fr": f"{ASSISTANT_NAME}> Recherche dans les documents…",
+                        "mg": f"{ASSISTANT_NAME}> Mikaroka ao amin'ny antontan-taratasy…",
+                    }[chat_router.detect_lang(req.question)]})),
                 on_docs_token=lambda piece: events.put(("token", {"text": piece})))
             memory.add(req.question, result.text)
             response = ChatResponse(
@@ -52,9 +56,11 @@ def chat_stream(req: ChatRequest, user: str = Depends(current_user)) -> Streamin
         except Exception as exc:
             debug_trace("API flux échoué", error=type(exc).__name__)
             language = chat_router.detect_lang(req.question)
-            message = (
-                "La demande a échoué. Veuillez réessayer." if language == "fr"
-                else "The request failed. Please try again.")
+            message = {
+                "fr": "La demande a échoué. Veuillez réessayer.",
+                "mg": "Tsy nahomby ny fangatahana. Andramo indray azafady.",
+                "en": "The request failed. Please try again.",
+            }[language]
             events.put(("error", {"text": message}))
         finally:
             events.put(None)

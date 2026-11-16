@@ -1,3 +1,4 @@
+import pytest
 from fastapi.testclient import TestClient
 
 from app.api import chat
@@ -6,7 +7,13 @@ from app.domain.models import AnswerResult
 from app.main import create_app
 
 
-def test_chat_stream_emits_waiting_message_tokens_and_complete_response(monkeypatch):
+@pytest.mark.parametrize(("question", "expected_status"), [
+    ("Find information about HIV", "IA'mbovo> Searching the documents…"),
+    ("C'est quoi le VIH ?", "IA'mbovo> Recherche dans les documents…"),
+    ("Inona no atao hoe VIH?", "IA'mbovo> Mikaroka ao amin'ny antontan-taratasy…"),
+])
+def test_chat_stream_emits_language_matched_status_and_tokens(
+        monkeypatch, question, expected_status):
     class Memory:
         history = []
 
@@ -27,13 +34,13 @@ def test_chat_stream_emits_waiting_message_tokens_and_complete_response(monkeypa
     app.dependency_overrides[current_user] = lambda: "test"
 
     response = TestClient(app).post(
-        "/v1/chat/stream", json={"question": "question", "mode": "DOCS"})
+        "/v1/chat/stream", json={"question": question, "mode": "DOCS"})
     events = response.text
 
     assert response.headers["content-type"].startswith("text/event-stream")
     assert "event: status" in events
-    assert "IA'mbovo> Recherche dans les documents…" in events
+    assert expected_status in events
     assert events.index("event: status") < events.index("event: token")
     assert events.count("event: token") == 2
     assert "event: complete" in events
-    assert memory.saved == ("question", "Réponse en direct.")
+    assert memory.saved == (question, "Réponse en direct.")

@@ -1,21 +1,17 @@
-Rédige une phrase naturelle, courte et dans la langue de la question.
-Réponds impérativement en {language}.
-Le SQL, les noms de colonnes et le jargon ne doivent jamais apparaître dans la réponse.
-Utilise uniquement les résultats et les notes fournis; n'invente aucun chiffre.
-Si les résultats sont vides ou accompagnés d'une limite de période, explique cette limite sans conclure à zéro.
-Le calcul est déjà exécuté : ne remets pas en question les résultats ni la disponibilité de la date.
-Si une valeur unique est fournie, annonce-la simplement et n'inclus pas les chiffres de la question
-qui ne figurent pas dans les résultats.
-Pour une valeur numérique unique, répète explicitement cette valeur et ne la remplace pas par une
-conclusion qualitative telle que « aucun ».
-Pour plusieurs lignes, fais une courte introduction; le code affichera le tableau traduit.
-Historique :
+Write one natural, concise sentence in {language}.
+Never include SQL, column names, or technical jargon. Use only the supplied results and notes; do not invent
+numbers. If results are empty or limited by a date range, explain the limitation without claiming the result is
+zero. The calculation is already complete; do not question its result or the date's availability.
+For one value, state that value plainly and do not repeat numbers from the question that are absent from the
+results. Never replace a supplied numeric value with a qualitative conclusion such as "none".
+For multiple rows, give a short introduction; the application will render the translated table.
+Conversation history:
 {history}
-Question : {question}
-SQL de calcul (ne pas répéter) : {sql}
-Colonnes : {columns}
-Résultats :
+Question: {question}
+SQL calculation (do not repeat): {sql}
+Columns: {columns}
+Results:
 {result}
-Notes :
+Notes:
 {notes}
-Réponse :
+Answer:

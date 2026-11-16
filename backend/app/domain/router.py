@@ -7,6 +7,7 @@ import unicodedata
 from dataclasses import dataclass
 
 import httpx
+from langdetect import DetectorFactory, LangDetectException, detect_langs
 
 from app.core.config import ASSISTANT_NAME, debug_trace
 from app.core.dictionary import undefined_terms
@@ -30,21 +31,23 @@ _IDENTITY = re.compile(
     r"que peux[- ]tu faire|que savez[- ]vous faire|quelles sont tes capacités|"
     r"what are your capabilities|quelles sources|quels documents|quelles vues|"
     r"comment fonctionnes[- ]tu|how do you work|est[- ]ce que je peux|"
-    r"puis[- ]je|can i ask|can i)\b", re.I)
+    r"puis[- ]je|can i ask|can i|iza ianao|inona no anaranao|inona no azonao atao)\b", re.I)
 _SUMMARY = re.compile(
-    r"\b(?:résume(?:r)?|résumé|summari[sz]e|summary)\b.{0,50}"
-    r"\b(?:conversation|échange|discussion|chat)\b", re.I)
+    r"\b(?:résume(?:r)?|résumé|summari[sz]e|summary|fintino)\b.{0,50}"
+    r"\b(?:conversation|échange|discussion|chat|resaka)\b", re.I)
 _GREETINGS = re.compile(
     r"^\W*(?:bonjour|salut|bonsoir|hello|hi|hey|merci(?: beaucoup)?|"
-    r"thanks|thank you(?: so much)?)[\W]*$", re.I)
+    r"thanks|thank you(?: so much)?|salama|manao ahoana|misaotra(?: betsaka)?)[\W]*$", re.I)
 _SQL = re.compile(
     r"\b(?:combien|how many|nombre de|count|total|statistiques?|statistics|"
     r"répartition|distribution|moyenne|average|pourcentage|percentage|"
-    r"taux|trend|évolution|évolutions|comparer|compare)\b", re.I)
+    r"taux|trend|évolution|évolutions|comparer|compare|firy|isan['’]ny|"
+    r"fitambaran|ampitahao|fizarana|salanisa)\b", re.I)
 _DATA = re.compile(
     r"\b(?:patient|patients|admission|admissions|visite|visites|consultation|"
     r"consultations|diagnostic|diagnostics|décès|deces|mortalité|deaths|"
-    r"district|commune|sexe|gender|tranche|âge|age)\b", re.I)
+    r"district|commune|sexe|gender|tranche|âge|age|marary|fizahana|fitsidihana|"
+    r"fahafatesana|taona|lahy|vavy)\b", re.I)
 _DOCS = re.compile(
     r"\b(?:sympt[oô]mes?|maladie|maladies|disease|diseases|traitement|treatment|"
     r"soigner|treat|médicament|medicine|posologie|dosage|prévention|prevention|"
@@ -53,22 +56,25 @@ _DOCS = re.compile(
     r"who is|comment traiter|how to treat|health|santé|"
     r"\b(?:vih|sida|hiv|aids)\b|"
     r"fièvre|fever|douleur|pain|toux|cough|mal de tête|headache|nausée|nausea|"
-    r"respirer|breath|enceinte|pregnant)\b", re.I)
+    r"respirer|breath|enceinte|pregnant|aretina|soritr['’]aretina|fitsaboana|"
+    r"fisorohana|fanafody)\b", re.I)
 _MEDICAL = re.compile(
     r"\b(?:sympt[oô]me|maladie|disease|infection|virus|vih|sida|hiv|aids|"
     r"traitement|treatment|médicament|medicine|dosage|posologie|diagnostic|"
     r"fièvre|fever|douleur|pain|toux|cough|saignement|bleeding|grossesse|pregnan|"
-    r"headache|mal de tête|nausée|nausea|respirer|breath|santé|health)\b", re.I)
+    r"headache|mal de tête|nausée|nausea|respirer|breath|santé|health|aretina|"
+    r"soritr['’]aretina|fitsaboana|fanafody)\b", re.I)
 _MEDICAL_CONTENT = re.compile(
     r"\b(?:symptoms?|sympt[oô]mes?|treatment|traitement|transmitted|transmission|"
     r"contagious|contagieux|diagnosis|diagnostic|dosage|posologie|caused by|"
     r"causé par|means|signifie|defined as|se définit|virus|infection|disease|"
-    r"infectious|contagion|prevention|prévention|spreads?|se transmet)\b", re.I)
+    r"infectious|contagion|prevention|prévention|spreads?|se transmet|aretina|"
+    r"fitsaboana|fisorohana|mifindra)\b", re.I)
 _NO_ACCESS = re.compile(
     r"\b(?:i (?:do not|don't|cannot|can't|will not|won't) have access to|"
     r"i (?:cannot|can't|will not|won't) (?:be able to )?access|"
     r"je n['’](?:ai|aurai|aurais) pas accès|je ne peux pas accéder|"
-    r"je ne dispose pas d'accès)\b", re.I)
+    r"je ne dispose pas d'accès|tsy afaka miditra|tsy manana fahafahana miditra)\b", re.I)
 _FR_WORDS = {"qui", "es", "tu", "est", "quoi", "êtes", "vous", "comment", "combien", "les",
              "des", "une", "je", "bonjour", "quel", "quelle", "pourquoi", "peux", "c'est",
              "parles", "parlez", "merci", "salut", "et", "pour", "de", "du", "en", "chez",
@@ -78,6 +84,10 @@ _EN_WORDS = {"who", "are", "you", "what", "is", "how", "many", "the", "your", "c
              "in", "have", "any", "clue", "stand", "stands", "for", "from", "with", "health",
              "to", "of", "this", "that", "its", "there", "prevalence", "study", "reported",
              "means"}
+_MG_WORDS = {"aho", "ahó", "ianao", "izy", "izahay", "isika", "ianareo", "iza", "inona",
+             "aiza", "ahoana", "oviana", "firy", "ve", "tsy", "eny", "ary", "sy", "ny",
+             "dia", "amin", "momba", "mba", "azafady", "misaotra", "salama", "aretina",
+             "soritr'aretina", "afaka", "manana", "atao", "fa", "no", "izany"}
 EMERGENCY = re.compile(
     r"\b(chest pain|cannot breathe|difficulty breathing|severe bleeding|unconscious|"
     r"suicide|seizure|anaphylaxis|choking|stroke|urgence médicale|douleur thoracique|"
@@ -88,21 +98,29 @@ PATIENT_RECORD = re.compile(
 EMERGENCY_TEXT = {
     "fr": "Cela peut être une urgence médicale. Contactez immédiatement les services d'urgence locaux.",
     "en": "This may be a medical emergency. Contact local emergency services immediately.",
+    "mg": "Mety ho vonjy taitra ara-pahasalamana izany. Mifandraisa avy hatrany amin'ny sampana mpamonjy voina eo an-toerana.",
 }
 PATIENT_MESSAGE = {
     "fr": "La consultation de dossiers individuels n'est pas disponible. Je peux répondre à des questions statistiques agrégées.",
     "en": "Looking up individual patient records is not available. I can answer aggregate statistical questions.",
+    "mg": "Tsy azo jerena ny antontan-taratasin'ny marary tsirairay. Afaka mamaly fanontaniana momba ny antontan'isa mitambatra aho.",
 }
 NO_DATA_TEXT = {
     "fr": "Je n'ai pas de chiffre fiable pour cette question. Reformulez-la complètement.",
     "en": "I don't have a reliable figure for this. Please rephrase the question in full.",
+    "mg": "Tsy manana tarehimarika azo antoka momba izany aho. Azafady, avereno amin'ny fomba mazava kokoa ny fanontaniana.",
 }
 ACCESS_REPLY = {
     "fr": ("Je peux répondre aux questions chiffrées sur les patients, consultations, sorties et diagnostics. "
            "Pour la santé, je m'appuie sur les documents chargés."),
     "en": ("I can answer numerical questions about patients, consultations, discharges, and diagnoses. "
            "For health questions, I use the loaded documents."),
+    "mg": ("Afaka mamaly fanontaniana momba ny isan'ny marary, ny fizahana, ny fivoahana ary ny aretina aho. "
+           "Ho an'ny fanontaniana ara-pahasalamana dia mampiasa ireo antontan-taratasy nampidirina aho."),
 }
+LANGUAGE_NAMES = {"en": "English", "fr": "French", "mg": "Malagasy"}
+
+DetectorFactory.seed = 0
 
 
 @dataclass(frozen=True)
@@ -113,14 +131,40 @@ class Route:
 
 
 def detect_lang(text: str) -> str:
-    low = text.lower()
+    """Detect the current message language; use English for short or uncertain input."""
+    low = unicodedata.normalize("NFKC", text).casefold()
     words = set(re.findall(r"[a-zàâçéèêëîïôûùüÿœ']+", low))
-    french = len(words & _FR_WORDS) + bool(re.search(r"[àâçéèêëîïôûùüÿœ]", low))
-    return "en" if len(words & _EN_WORDS) > french else "fr"
+    scores = {
+        "fr": len(words & _FR_WORDS) + 2 * bool(re.search(r"[àâçéèêëîïôûùüÿœ]", low)),
+        "en": len(words & _EN_WORDS),
+        "mg": len(words & _MG_WORDS),
+    }
+    strongest = max(scores, key=scores.get)
+    unique_signals = {
+        "fr": {"bonjour", "merci", "salut", "bonsoir", "oui", "êtes", "c'est", "ça",
+               "d'accord", "le", "la", "les", "des", "une", "un", "du", "je", "tu",
+               "vous", "quel", "quelle"},
+        "en": {"hello", "hey", "thanks", "please", "who", "what"},
+        "mg": {"salama", "misaotra", "ahoana", "ianao", "azafady", "eny", "tsy",
+               "ny", "ve", "ary"},
+    }
+    if (scores[strongest] >= 2 or words & unique_signals[strongest]) and scores[strongest] > max(
+            score for language, score in scores.items() if language != strongest):
+        return strongest
+    if len(words) < 3:
+        return "en"
+    try:
+        detected = detect_langs(text)
+    except LangDetectException:
+        return "en"
+    if detected and detected[0].prob >= 0.75:
+        code = detected[0].lang
+        return code if code in LANGUAGE_NAMES else "en"
+    return "en"
 
 
 def language_name(language: str) -> str:
-    return "anglais" if language == "en" else "français"
+    return LANGUAGE_NAMES.get(language, "English")
 
 
 def is_summary_request(question: str) -> bool:
@@ -147,12 +191,20 @@ def quick_reply(question: str, allow_chat_replies: bool = True) -> tuple[str, st
     """Réponses fixes courtes, de sécurité et de confidentialité."""
     lang = detect_lang(question)
     if allow_chat_replies and _GREETINGS.fullmatch(question):
-        if re.search(r"\b(?:merci|thanks|thank you)\b", question, re.I):
-            return "CHAT", ("Avec plaisir." if lang == "fr" else "You're welcome.")
-        return "CHAT", (
-            f"Bonjour, je suis {ASSISTANT_NAME}, l'assistant IA de MHM Ambovo. "
-            "Comment puis-je vous aider." if lang == "fr" else
-            f"Hello, I'm {ASSISTANT_NAME}, the AI assistant at MHM Ambovo. How can I help.")
+        if re.search(r"\b(?:merci|thanks|thank you|misaotra)\b", question, re.I):
+            return "CHAT", {
+                "fr": "Avec plaisir.",
+                "mg": "Tsy misy fisaorana.",
+                "en": "You're welcome.",
+            }[lang]
+        greeting = {
+            "fr": (f"Bonjour, je suis {ASSISTANT_NAME}, l'assistant IA de MHM Ambovo. "
+                   "Comment puis-je vous aider ?"),
+            "mg": (f"Salama, {ASSISTANT_NAME} aho, mpanampy IA an'ny MHM Ambovo. "
+                   "Ahoana no azoko anampiana anao?"),
+            "en": f"Hello, I'm {ASSISTANT_NAME}, the AI assistant at MHM Ambovo. How can I help?",
+        }
+        return "CHAT", greeting[lang]
     if EMERGENCY.search(question):
         return "CHAT", EMERGENCY_TEXT[lang]
     if PATIENT_RECORD.search(question):
@@ -228,9 +280,11 @@ def guard_general(answer: str, question: str, history=None) -> str:
     if (is_medical(question) and not capability_question) or medical_answer:
         debug_trace("CHAT rejet", reason="garde-fou médical sans source",
                     question=question, answer=answer)
-        return ("Je peux rechercher cette information dans les documents chargés."
-                if lang == "fr" else
-                "I can look for this information in the loaded documents.")
+        return {
+            "fr": "Je peux rechercher cette information dans les documents chargés.",
+            "mg": "Afaka mikaroka izany ao amin'ireo antontan-taratasy nampidirina aho.",
+            "en": "I can look for this information in the loaded documents.",
+        }[lang]
     context = question + " " + " ".join(
         f"{q} {a}" for q, a in (history or [])[-10:])
     if numbers_in(answer) - numbers_in(context):

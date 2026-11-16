@@ -1,7 +1,6 @@
-Résume uniquement les échanges de la conversation en 2 ou 3 phrases dans la langue {language}.
-Décris les sujets abordés sans répéter d'information médicale ni ajouter de fait.
-Sois concis et ne répète pas la même idée.
-Historique :
+Summarize only the conversation in 2 or 3 sentences in {language}.
+Describe the topics without repeating medical information or adding facts. Be concise and do not repeat ideas.
+Conversation history:
 {history}
-Demande : {question}
-Résumé :
+Request: {question}
+Summary:

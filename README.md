@@ -10,6 +10,9 @@ Question + historique → réécriture → règles déterministes → SQL valid�
 Les questions chiffrées vont en `SQL`, les questions de santé en `DOCS`, et les salutations,
 explications, demandes d'identité ou capacités en `CHAT`. Les suivis sont réécrits avant le routage.
 En mode `CHAT`, les réponses médicales non sourcées sont refusées et redirigées vers la recherche dans les documents.
+L'anglais est la langue par défaut. La langue de chaque message est détectée indépendamment de l'historique :
+les réponses et messages d'état suivent l'anglais, le français ou le malgache utilisés par la personne, et
+changent de langue si elle en change.
 
 ## Principes de sécurité
 1. Le modèle ne voit que le schéma `analytics` (quelques vues), jamais les 220 tables.
