@@ -95,9 +95,9 @@ export const useChatStore = defineStore('chat', {
       activeConversationId: saved.activeConversationId,
       loadingConversationIds: [],
       suggestions: [
-        'Que peux-tu faire pour moi ?',
-        'Donne-moi un tableau de répartition par région',
-        'Que disent les documents sur la prévention ?',
+        'How many patients are there at MHM ?',
+        'Give me the number of visits at MHM in June 2026',
+        'What are the symptoms of HIV?',
       ],
     }
   },

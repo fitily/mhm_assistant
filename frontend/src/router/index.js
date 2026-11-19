@@ -6,13 +6,13 @@ const routes = [
     path: '/login',
     name: 'login',
     component: () => import('@/views/LoginView.vue'),
-    meta: { guestOnly: true, title: 'Connexion' },
+    meta: { guestOnly: true, title: 'Login' },
   },
   {
     path: '/',
     name: 'home',
     component: () => import('@/views/DashboardView.vue'),
-    meta: { requiresAuth: true, title: 'Accueil' },
+    meta: { requiresAuth: true, title: 'Home' },
   },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]
@@ -33,7 +33,7 @@ router.beforeEach((to) => {
 })
 
 router.afterEach((to) => {
-  document.title = to.meta.title ? `${to.meta.title} · MHM Assistant` : 'MHM Assistant'
+  document.title = to.meta.title ? `${to.meta.title} · iA'mbovo` : 'iA\'mbovo'
 })
 
 export default router
