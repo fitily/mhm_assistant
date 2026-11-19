@@ -6,24 +6,24 @@ export const ROLE_ADMIN = 'admin'
 export const ROLE_DOCTOR = 'doctor'
 
 const LABELS = {
-  [ROLE_ADMIN]: 'Administrateur',
-  [ROLE_DOCTOR]: 'Médecin',
+  [ROLE_ADMIN]: 'Administrator',
+  [ROLE_DOCTOR]: 'Doctor',
 }
 
 // Questions proposées dans le chat selon le rôle (celles qui fonctionnent pour ce profil).
+// C'est ici que se règlent les suggestions affichées : `suggestions` de stores/chat.js n'est plus utilisé.
 const SUGGESTIONS = {
   [ROLE_ADMIN]: [
-    'Que peux-tu faire pour moi ?',
-    'Donne-moi un tableau de répartition par région',
-    'Combien de patients par district ?',
+    'Who are you?',
+    'How many patients are there at MHM ?',
+    'Give me the number of visits at MHM in June 2026',
   ],
   [ROLE_DOCTOR]: [
-    'Que peux-tu faire pour moi ?',
-    'Que disent les documents sur la prévention ?',
-    'Quel est le protocole pour le paludisme ?',
+    'Who are you?',
+    'What are the symptoms of HIV?',
   ],
 }
 
 export const roleLabel = (role) => LABELS[role] || ''
 
-export const suggestionsFor = (role) => SUGGESTIONS[role] || ['Que peux-tu faire pour moi ?']
+export const suggestionsFor = (role) => SUGGESTIONS[role] || ['Who are you?']

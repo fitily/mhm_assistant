@@ -4,8 +4,8 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 // Comptes de démonstration (mot de passe : demo1234)
 const DEMO_ACCOUNTS = {
-  'demo@mhm.org': { name: 'Administrateur démo', role: 'admin' },
-  'medecin@mhm.org': { name: 'Médecin démo', role: 'doctor' },
+  'demo@mhm.org': { name: 'Fitily', role: 'admin' },
+  'medecin@mhm.org': { name: 'Doctor demo', role: 'doctor' },
 }
 
 export async function login(username, password) {
