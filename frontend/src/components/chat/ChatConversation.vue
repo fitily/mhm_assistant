@@ -1,6 +1,8 @@
 <script setup>
-import { ref, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
+import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
+import { suggestionsFor } from '@/utils/roles'
 import ChatMessage from './ChatMessage.vue'
 import ChatInput from './ChatInput.vue'
 
@@ -8,7 +10,10 @@ const props = defineProps({
   fullscreen: { type: Boolean, default: false },
 })
 
+const auth = useAuthStore()
 const chat = useChatStore()
+// Les suggestions dépendent du rôle : un médecin n'a pas les statistiques, un admin n'a pas les documents.
+const suggestions = computed(() => suggestionsFor(auth.role))
 const scroller = ref(null)
 const input = ref(null)
 
@@ -42,7 +47,7 @@ watch(
         <p>You can ask question related to data and documents of MHM.</p>
         <div class="suggestions">
           <button
-            v-for="suggestion in chat.suggestions"
+            v-for="suggestion in suggestions"
             :key="suggestion"
             type="button"
             @click="chat.send(suggestion)"

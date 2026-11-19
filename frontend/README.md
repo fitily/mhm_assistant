@@ -28,31 +28,34 @@ npm run dev              # http://localhost:5173
 
 ### Mode démonstration (sans backend)
 
-Avec `VITE_USE_MOCK=true` dans `.env`, l'application utilise de fausses réponses locales :
+Avec `VITE_MOCK_AUTH=true` (fausse connexion) et `VITE_MOCK_CHAT=true` (fausses réponses) dans
+`.env`, l'application fonctionne sans backend. Mot de passe des comptes de démonstration : `demo1234`
 
-- identifiant : `demo@mhm.org`
-- mot de passe : `demo1234`
+- `demo@mhm.org` : administrateur (statistiques)
+- `medecin@mhm.org` : médecin (documents)
 
 Essayer par exemple « Donne-moi un tableau de répartition par région » ou
 « Que disent les documents sur la prévention ? » pour voir tableaux, statistiques et sources.
 
 ### Brancher le vrai backend
 
-Mettre `VITE_USE_MOCK=false`. En développement, les appels `/api/...` sont redirigés par Vite
-vers `VITE_BACKEND_URL` (par défaut `http://localhost:8000`).
+Mettre `VITE_MOCK_AUTH=false` et `VITE_MOCK_CHAT=false`, puis se connecter avec un compte créé par
+`python scripts/create_user.py` (voir le README du projet). En développement, les appels `/api/...`
+sont redirigés par Vite vers `VITE_BACKEND_URL` (par défaut `http://localhost:8000`).
 
 ## 3. Contrat d'API attendu
 
 Tout est centralisé dans `src/services/api.js` : si votre backend FastAPI utilise d'autres routes
 ou d'autres noms de champs, c'est le seul fichier à adapter.
 
-**`POST /api/auth/login`**
+**`POST /api/v1/auth/login`**
 
 ```json
 // requête
 { "username": "prenom.nom@mhm.org", "password": "..." }
-// réponse
-{ "access_token": "...", "user": { "name": "Prénom Nom", "email": "..." } }
+// réponse (role : "doctor" ou "admin")
+{ "access_token": "...", "expires_in": 28800,
+  "user": { "name": "Prénom Nom", "email": "...", "role": "doctor" } }
 ```
 
 **`POST /api/chat`** (en-tête `Authorization: Bearer <token>`)

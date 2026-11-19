@@ -6,13 +6,13 @@ import * as mock from './mock'
 const BASE = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, '')
 
 // Deux interrupteurs indépendants :
-//  - VITE_MOCK_AUTH=true : fausse connexion (en attendant l'authentification Laravel)
+//  - VITE_MOCK_AUTH=true : fausse connexion (démonstration, sans backend)
 //  - VITE_MOCK_CHAT=true : fausses réponses du chat (sans backend)
 const MOCK_AUTH = import.meta.env.VITE_MOCK_AUTH === 'true'
 const MOCK_CHAT = import.meta.env.VITE_MOCK_CHAT === 'true'
 
-// Route de connexion réelle (Laravel) : chemin relatif à BASE, ou URL complète.
-const LOGIN_URL = import.meta.env.VITE_LOGIN_URL || '/auth/login'
+// Route de connexion réelle (FastAPI) : chemin relatif à BASE, ou URL complète.
+const LOGIN_URL = import.meta.env.VITE_LOGIN_URL || '/v1/auth/login'
 
 export const isMockAuth = MOCK_AUTH
 export const isMockChat = MOCK_CHAT
@@ -60,8 +60,8 @@ async function request(path, { method = 'GET', body, token } = {}) {
 /**
  * Connexion.
  * - Mode fictif : identifiants de démonstration, jeton factice.
- * - Mode réel : POST LOGIN_URL { username, password } -> { access_token, user? }
- *   (à brancher sur Laravel quand l'équipe l'aura livré).
+ * - Mode réel : POST /v1/auth/login { username, password }
+ *   -> { access_token, expires_in, user: { email, name, role } }   (role : "doctor" ou "admin")
  */
 export async function login(username, password) {
   if (MOCK_AUTH) return mock.login(username, password)
@@ -69,7 +69,15 @@ export async function login(username, password) {
   const data = await request(LOGIN_URL, { method: 'POST', body: { username, password } })
   const token = data?.access_token || data?.token
   if (!token) throw new ApiError('Réponse de connexion invalide.', 500)
-  return { token, user: data.user || { name: username, email: username } }
+  const user = data.user || {}
+  return {
+    token,
+    user: {
+      name: user.name || username,
+      email: user.email || username,
+      role: user.role || null,
+    },
+  }
 }
 
 /**

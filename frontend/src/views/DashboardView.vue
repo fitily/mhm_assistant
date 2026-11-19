@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
 import BrandLogo from '@/components/BrandLogo.vue'
@@ -11,21 +12,27 @@ const shortcuts = [
     title: 'Interroger les données',
     text: 'Obtenez des statistiques, des tableaux et des indicateurs en posant une simple question.',
     question: 'Donne-moi un tableau de répartition par région',
+    roles: ['admin'],
     icon: 'M3 3h2v18H3V3Zm4 10h3v8H7v-8Zm5-6h3v14h-3V7Zm5 3h3v11h-3V10Z',
   },
   {
     title: 'Chercher dans les documents',
     text: 'Retrouvez une information dans les rapports de référence, avec la source et la page.',
     question: 'Que disent les documents sur la prévention ?',
+    roles: ['doctor'],
     icon: 'M6 2h9l5 5v15H6V2Zm8 1.5V8h4.5L14 3.5ZM8 12h8v1.5H8V12Zm0 3.5h8V17H8v-1.5Z',
   },
   {
     title: 'Découvrir l’assistant',
     text: 'Voyez ce que l’assistant sait faire et comment formuler vos questions.',
     question: 'Que peux-tu faire pour moi ?',
+    roles: ['admin', 'doctor'],
     icon: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 15h-2v-2h2v2Zm1.1-5.2-.9.9c-.5.5-.7.9-.7 1.800h-1.500v-.4c0-.8.3-1.500.9-2.100l1.200-1.200a1.500 1.500 0 1 0-2.600-1H8.500a3.500 3.500 0 1 1 5.600 2Z',
   },
 ]
+
+// Chaque profil ne voit que les raccourcis qui lui sont utiles (le backend vérifie aussi les droits).
+const visibleShortcuts = computed(() => shortcuts.filter((s) => s.roles.includes(auth.role)))
 </script>
 
 <template>
@@ -36,6 +43,7 @@ const shortcuts = [
         <div class="user">
           <span class="avatar" aria-hidden="true">{{ auth.displayName.charAt(0).toUpperCase() }}</span>
           <span class="name">{{ auth.displayName }}</span>
+          <span v-if="auth.roleLabel" class="role">{{ auth.roleLabel }}</span>
           <button class="btn btn-ghost logout" type="button" @click="auth.logout()">
             Se déconnecter
           </button>
@@ -57,7 +65,7 @@ const shortcuts = [
         <h2 id="shortcuts-title" class="section-title">Pour commencer</h2>
         <div class="grid">
           <button
-            v-for="s in shortcuts"
+            v-for="s in visibleShortcuts"
             :key="s.title"
             class="tile"
             type="button"
@@ -117,6 +125,15 @@ const shortcuts = [
   white-space: nowrap;
   font-weight: 600;
   color: var(--mhm-slate);
+}
+.role {
+  flex: none;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--mhm-blue-50);
+  color: var(--mhm-blue-dark);
+  font-size: 0.78rem;
+  font-weight: 600;
 }
 .logout {
   padding: 8px 14px;

@@ -2,13 +2,18 @@ import { ApiError } from './errors'
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
+// Comptes de démonstration (mot de passe : demo1234)
+const DEMO_ACCOUNTS = {
+  'demo@mhm.org': { name: 'Administrateur démo', role: 'admin' },
+  'medecin@mhm.org': { name: 'Médecin démo', role: 'doctor' },
+}
+
 export async function login(username, password) {
   await sleep(900)
-  if (username.trim().toLowerCase() === 'demo@mhm.org' && password === 'demo1234') {
-    return {
-      token: 'mock-token',
-      user: { name: 'Utilisateur démo', email: 'demo@mhm.org' },
-    }
+  const email = username.trim().toLowerCase()
+  const account = DEMO_ACCOUNTS[email]
+  if (account && password === 'demo1234') {
+    return { token: 'mock-token', user: { name: account.name, email, role: account.role } }
   }
   throw new ApiError('Identifiant ou mot de passe incorrect.', 401)
 }
