@@ -8,9 +8,9 @@ from app.main import create_app
 
 
 @pytest.mark.parametrize(("question", "expected_status"), [
-    ("Find information about HIV", "IA'mbovo> Searching the documents…"),
-    ("C'est quoi le VIH ?", "IA'mbovo> Recherche dans les documents…"),
-    ("Inona no atao hoe VIH?", "IA'mbovo> Mikaroka ao amin'ny antontan-taratasy…"),
+    ("Find information about HIV", "iA'mbovo> Searching the documents…"),
+    ("C'est quoi le VIH ?", "iA'mbovo> Recherche dans les documents…"),
+    ("Inona no atao hoe VIH?", "iA'mbovo> Mikaroka ao amin'ny antontan-taratasy…"),
 ])
 def test_chat_stream_emits_language_matched_status_and_tokens(
         monkeypatch, question, expected_status):

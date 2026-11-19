@@ -1,4 +1,4 @@
-# IA'mbovo — assistant IA de MHM Ambovo
+# iA'mbovo — assistant IA de MHM Ambovo
 
 L'assistant répond aux questions **statistiques** (patients, consultations, sorties, diagnostics)
 et aux questions de santé fondées sur les documents chargés, sans exposer les données patients.

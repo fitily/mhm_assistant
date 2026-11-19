@@ -1,0 +1,121 @@
+:root {
+  --mhm-blue: #0093d7;
+  --mhm-blue-dark: #0079b3;
+  --mhm-blue-50: #e8f5fc;
+  --mhm-blue-100: #cdeafa;
+  --mhm-slate: #375d77;
+  --mhm-slate-dark: #284558;
+
+  --bg: #f3f6f9;
+  --surface: #ffffff;
+  --text: #1c2b36;
+  --muted: #5f7380;
+  --border: #dbe3e9;
+  --danger: #c0392b;
+  --danger-bg: #fdecea;
+
+  --radius: 12px;
+  --shadow-sm: 0 1px 3px rgba(28, 43, 54, 0.08);
+  --shadow-lg: 0 18px 48px rgba(28, 43, 54, 0.22);
+
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  color: var(--text);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background: var(--bg);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 3px solid var(--mhm-blue-100);
+  outline-offset: 1px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 18px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--mhm-blue);
+  color: #fff;
+  font-weight: 600;
+  transition: background 0.15s, transform 0.05s;
+}
+.btn:hover:not(:disabled) {
+  background: var(--mhm-blue-dark);
+}
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--mhm-slate);
+  border: 1px solid var(--border);
+}
+.btn-ghost:hover:not(:disabled) {
+  background: var(--mhm-blue-50);
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

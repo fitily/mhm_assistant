@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy.engine import URL
 
-ASSISTANT_NAME = "IA'mbovo"
+ASSISTANT_NAME = "iA'mbovo"
 ROOT = Path(__file__).resolve().parents[3]
 
 try:
