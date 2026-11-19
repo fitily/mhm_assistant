@@ -9,20 +9,27 @@ from collections.abc import Iterator
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 
-from app.api.deps import current_user, sessions
+from app.api.deps import current_user, require_role, sessions
 from app.core.config import ASSISTANT_NAME, debug_trace
+from app.core.security import ROLE_ADMIN, ROLE_DOCTOR, Principal
 from app.domain import router as chat_router
 from app.schemas.chat import ChatRequest, ChatResponse, ClearRequest, Source
 from app.services import chat_service
 
 router = APIRouter(prefix="/v1", tags=["chat"])
 
+# Il faut être connecté avec un rôle connu (doctor ou admin). Ce que chaque rôle peut demander
+# est contrôlé ensuite, question par question, dans chat_service (domain/permissions.py).
+chat_user = require_role(ROLE_DOCTOR, ROLE_ADMIN)
+
 
 @router.post("/chat", response_model=ChatResponse)
-def chat(req: ChatRequest, user: str = Depends(current_user)) -> ChatResponse:
+def chat(req: ChatRequest, principal: Principal = Depends(chat_user)) -> ChatResponse:
     # `def` (et non `async def`) : FastAPI l'exécute dans un thread, le LLM ne bloque pas le serveur.
+    user = principal.user
     memory = sessions.get(f"{user}:{req.session_id or 'default'}")
-    result = chat_service.answer(req.question, forced=req.mode, history=memory.history, user=user)
+    result = chat_service.answer(
+        req.question, forced=req.mode, history=memory.history, user=user, role=principal.role)
     memory.add(req.question, result.text)
     return ChatResponse(
         text=result.text, sender=ASSISTANT_NAME, mode=result.mode,
@@ -31,7 +38,8 @@ def chat(req: ChatRequest, user: str = Depends(current_user)) -> ChatResponse:
 
 
 @router.post("/chat/stream")
-def chat_stream(req: ChatRequest, user: str = Depends(current_user)) -> StreamingResponse:
+def chat_stream(req: ChatRequest, principal: Principal = Depends(chat_user)) -> StreamingResponse:
+    user = principal.user
     memory = sessions.get(f"{user}:{req.session_id or 'default'}")
     events: queue.Queue[tuple[str, dict] | None] = queue.Queue()
 
@@ -39,6 +47,7 @@ def chat_stream(req: ChatRequest, user: str = Depends(current_user)) -> Streamin
         try:
             result = chat_service.answer(
                 req.question, forced=req.mode, history=memory.history, user=user,
+                role=principal.role,
                 on_docs_wait=lambda: events.put(
                     ("status", {"text": {
                         "en": f"{ASSISTANT_NAME}> Searching the documents…",

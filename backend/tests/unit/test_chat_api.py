@@ -2,7 +2,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.api import chat
-from app.api.deps import current_user
+from app.api.deps import current_principal
+from app.core.security import Principal
 from app.domain.models import AnswerResult
 from app.main import create_app
 
@@ -31,7 +32,7 @@ def test_chat_stream_emits_language_matched_status_and_tokens(
 
     monkeypatch.setattr(chat.chat_service, "answer", answer)
     app = create_app()
-    app.dependency_overrides[current_user] = lambda: "test"
+    app.dependency_overrides[current_principal] = lambda: Principal("test", "doctor")
 
     response = TestClient(app).post(
         "/v1/chat/stream", json={"question": question, "mode": "DOCS"})

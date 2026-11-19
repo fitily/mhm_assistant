@@ -10,7 +10,7 @@ import httpx
 from app.core.audit import audit
 from app.core.config import debug_trace, get_settings
 from app.core.dictionary import approved_views
-from app.domain import prompts, router
+from app.domain import permissions, prompts, router
 from app.domain.formatting import format_history
 from app.domain.models import AnswerResult
 from app.domain.periods import normalize_question, parse_period
@@ -19,11 +19,13 @@ from app.domain.sql.executor import run_sql
 from app.infrastructure.llm import ollama
 from app.services.answer_language import _ensure_language, _is_language_prefix
 from app.services.answer_messages import (
+    ACCESS_DENIED,
     ANALYSIS_DOWN,
     ANALYSIS_ERROR,
     DOCS_DOWN,
     LLM_DOWN,
     LLM_TIMEOUT,
+    MODE_FORBIDDEN,
     NO_DOC,
     NO_RESULT,
     NO_VALUE,
@@ -101,8 +103,13 @@ def _answer(
     decision: router.Route | None,
     on_docs_wait: Callable[[], None] | None = None,
     on_docs_token: Callable[[str], None] | None = None,
+    role: str | None = None,
 ) -> AnswerResult:
-    """Route a question and execute only the selected answer generator."""
+    """Route a question and execute only the selected answer generator.
+
+    `role` : « doctor » ou « admin » (voir domain/permissions.py). None = aucune restriction,
+    réservé aux outils locaux comme le CLI ; l'API passe toujours le rôle du jeton.
+    """
     language = router.detect_lang(original)
     if forced:
         quick = router.quick_reply(question, allow_chat_replies=False)
@@ -117,6 +124,10 @@ def _answer(
                 "CHAT",
             )
         mode = decision.name.upper()
+
+    if role is not None and not permissions.is_allowed(role, mode):
+        refusal = MODE_FORBIDDEN.get(mode, ACCESS_DENIED)[language]
+        return AnswerResult(refusal, "CHAT", audit_stage=f"forbidden:{mode}")
 
     today = dt.datetime.now(get_settings().tz).date()
     period = parse_period(normalize_question(question), today)
@@ -141,6 +152,7 @@ def answer(
     user: str = "inconnu",
     on_docs_wait: Callable[[], None] | None = None,
     on_docs_token: Callable[[str], None] | None = None,
+    role: str | None = None,
 ) -> AnswerResult:
     question = " ".join(question.split())
     language = router.detect_lang(question)
@@ -198,6 +210,7 @@ def answer(
         decision,
         on_docs_wait,
         on_docs_token,
+        role=role,
     )
     shown = question if standalone == question else f"{question} → {standalone}"
     if not router.has_useful_content(result.text):

@@ -183,13 +183,15 @@ def test_api_clear_empties_only_the_requested_session():
 
 
 def test_api_response_uses_assistant_sender(monkeypatch):
+    from app.core.security import Principal
     from app.domain.models import AnswerResult
     from app.schemas.chat import ChatRequest
 
     monkeypatch.setattr(chat_api.chat_service, "answer",
                         lambda *args, **kwargs: AnswerResult("Bonjour.", "CHAT"))
 
-    response = chat_api.chat(ChatRequest(question="Bonjour"), user="test-user:sender")
+    response = chat_api.chat(ChatRequest(question="Bonjour"),
+                             principal=Principal("test-user:sender", "doctor"))
 
     assert response.sender == ASSISTANT_NAME
     assert response.mode == "CHAT"

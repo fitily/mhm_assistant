@@ -55,3 +55,33 @@ RESULTS_CALCULATED = {
     "en": "Here are the calculated results.",
     "mg": "Ireto ny valin'ny kajy.",
 }
+# Refus selon le rôle : un médecin n'a pas les statistiques, un administrateur n'a pas les documents.
+MODE_FORBIDDEN = {
+    "SQL": {
+        "fr": ("Les statistiques ne sont pas disponibles pour votre profil (médecin). "
+               "Je peux répondre à vos questions de santé à partir des documents chargés. "
+               "Pour obtenir des chiffres, contactez un administrateur."),
+        "en": ("Statistics are not available for your profile (doctor). "
+               "I can answer your health questions using the loaded documents. "
+               "To get figures, please contact an administrator."),
+        "mg": ("Tsy azo ampiasaina amin'ny mombamomba anao (dokotera) ny antontan'isa. "
+               "Afaka mamaly ny fanontaniana ara-pahasalamana avy amin'ireo antontan-taratasy "
+               "nampidirina aho. Raha mila tarehimarika ianao, mifandraisa amin'ny mpitantana."),
+    },
+    "DOCS": {
+        "fr": ("Les questions de santé fondées sur les documents ne sont pas disponibles pour "
+               "votre profil (administrateur). Je peux répondre aux questions statistiques sur "
+               "les patients, consultations, sorties et diagnostics."),
+        "en": ("Document-based health questions are not available for your profile "
+               "(administrator). I can answer statistical questions about patients, "
+               "consultations, discharges and diagnoses."),
+        "mg": ("Tsy azo ampiasaina amin'ny mombamomba anao (mpitantana) ny fanontaniana "
+               "ara-pahasalamana mifototra amin'ny antontan-taratasy. Afaka mamaly fanontaniana "
+               "momba ny antontan'isa ny marary, ny fizahana, ny fivoahana ary ny aretina aho."),
+    },
+}
+ACCESS_DENIED = {
+    "fr": "Accès refusé pour votre profil.",
+    "en": "Access denied for your profile.",
+    "mg": "Tsy azonao ampiasaina izany amin'ny mombamomba anao.",
+}
