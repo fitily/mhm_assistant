@@ -20,7 +20,9 @@ changent de langue si elle en change.
 3. Tout SQL généré est validé (un seul `SELECT`, vues autorisées, paramètres liés, pas de `SELECT *`, identifiants patients seulement dans un `COUNT`).
 4. Les définitions métier (patient, visite, tranches d'âge…) sont fixées dans `config/metrics.yaml`.
 5. Chaque question est journalisée (`logs/audit_log.jsonl`).
-6. L'authentification reste dans Laravel : il envoie un jeton JWT que FastAPI vérifie.
+6. L'authentification est gérée par FastAPI : `POST /v1/auth/login` vérifie le mot de passe (haché avec
+   argon2, comptes dans la base séparée `ambovo_app`) et renvoie un jeton JWT contenant le rôle
+   (`doctor` : documents ; `admin` : statistiques et dashboards).
 
 ## Démarrage (sans Docker, sur ton Ubuntu)
 ```bash
@@ -48,8 +50,20 @@ curl -X POST localhost:8000/v1/chat -H "Content-Type: application/json" \
      -d '{"question": "Combien de patients par district ?"}'
 curl -X POST localhost:8000/v1/clear -H "Content-Type: application/json" -d '{}'
 ```
-En production : `AUTH_DISABLED=0`, `JWT_SECRET` identique à celui de Laravel, et l'en-tête
-`Authorization: Bearer <jeton>` envoyé par Laravel.
+En production : `AUTH_DISABLED=0`, un `JWT_SECRET` long et secret, et l'en-tête
+`Authorization: Bearer <jeton>` obtenu avec `POST /v1/auth/login`.
+
+## Comptes utilisateurs
+```bash
+# 1. Créer la base séparée (une seule fois)
+sudo -u postgres psql -c "CREATE ROLE ambovo_app LOGIN PASSWORD 'choisir-un-mot-de-passe';"
+sudo -u postgres psql -c "CREATE DATABASE ambovo_app OWNER ambovo_app;"
+psql -h localhost -U ambovo_app -d ambovo_app -f data/app/001_users.sql
+# 2. Renseigner APP_PASSWORD dans .env, puis créer les comptes
+python scripts/create_user.py create --email medecin@mhm.org --name "Docteur Test" --role doctor
+python scripts/create_user.py create --email admin@mhm.org --name "Admin Test" --role admin
+python scripts/create_user.py list
+```
 
 ## Organisation
 | Dossier | Rôle |

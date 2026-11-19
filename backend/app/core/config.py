@@ -56,6 +56,7 @@ class Settings:
     allowed_schemas: frozenset[str]
     src_url: URL
     vec_url: URL
+    app_url: URL
     dictionary_path: Path
     metrics_path: Path
     prompts_dir: Path
@@ -63,6 +64,10 @@ class Settings:
     auth_disabled: bool
     jwt_secret: str
     jwt_algorithm: str
+    jwt_expire_minutes: int
+    dev_role: str
+    login_max_attempts: int
+    login_lock_minutes: int
     cors_origins: list[str]
 
 
@@ -87,6 +92,7 @@ def get_settings() -> Settings:
         allowed_schemas=_csv("SRC_ALLOWED_SCHEMAS", "analytics"),
         src_url=_url("SRC", "prod_mhm_ps", "chatbot_ro"),
         vec_url=_url("VEC", "medrag_kb", "rag_admin"),
+        app_url=_url("APP", "ambovo_app", "ambovo_app"),
         dictionary_path=Path(os.getenv("DATA_DICTIONARY", ROOT / "config" / "data_dictionary.yaml")),
         metrics_path=Path(os.getenv("METRICS_FILE", ROOT / "config" / "metrics.yaml")),
         prompts_dir=ROOT / "config" / "prompts",
@@ -94,6 +100,10 @@ def get_settings() -> Settings:
         auth_disabled=os.getenv("AUTH_DISABLED", "0") == "1",
         jwt_secret=os.getenv("JWT_SECRET", ""),
         jwt_algorithm=os.getenv("JWT_ALGORITHM", "HS256"),
+        jwt_expire_minutes=int(os.getenv("JWT_EXPIRE_MINUTES", "480")),
+        dev_role=os.getenv("DEV_ROLE", "admin"),
+        login_max_attempts=int(os.getenv("LOGIN_MAX_ATTEMPTS", "5")),
+        login_lock_minutes=int(os.getenv("LOGIN_LOCK_MINUTES", "15")),
         cors_origins=[o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()],
     )
 

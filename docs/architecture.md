@@ -2,7 +2,7 @@
 
 ## Flux d'une question
 ```
-Laravel / Vue ──(JWT)──▶ POST /v1/chat
+Vue ──(login → JWT avec rôle)──▶ POST /v1/chat
                            │
                   chat_service.answer
                            │
@@ -23,7 +23,9 @@ Laravel / Vue ──(JWT)──▶ POST /v1/chat
   ne justifient pas de microservices.
 - **Indicateurs d'abord** : les questions fréquentes n'utilisent pas le LLM (exactes, rapides).
   Le text-to-SQL libre est le second niveau, borné aux vues autorisées.
-- **Authentification déléguée à Laravel** (JWT), pas de second système d'utilisateurs.
+- **Authentification dans FastAPI** (JWT émis à la connexion, mots de passe hachés argon2).
+  Comptes dans une base `ambovo_app` séparée des données médicales. Deux rôles :
+  `doctor` (documents uniquement) et `admin` (statistiques et dashboards uniquement).
 - **Ollama et PostgreSQL en local** en développement ; Docker seulement pour la production.
 - **Pas de LlamaIndex** : requêtes pgvector directes (moins de dépendances, mémoire réduite).
 
