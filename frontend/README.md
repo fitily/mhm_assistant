@@ -111,6 +111,20 @@ frontend/
 └── vite.config.js
 ```
 
+## 5 bis. Espaces par rôle (prêts pour la suite)
+
+Toutes les pages connectées utilisent `components/layout/AppShell.vue` (menu latéral, bandeau sur mobile).
+Le menu se règle dans `utils/navigation.js` ; l'accès aux pages dans `router/index.js` (`meta.roles`).
+
+- **Administrateur → `/analytics`** (`views/AnalyticsView.vue`) : emplacement des tableaux de bord Superset.
+  `services/analytics.js` fournit le catalogue (pour l'instant des emplacements vides, aucun appel réseau) ;
+  `components/analytics/DashboardViewport.vue` expose `mountEl`, l'élément où monter l'iframe, et gère les états
+  `loading | error | empty | coming-soon | ready`. Le tableau choisi est dans l'URL (`?d=clé`).
+- **Médecin → `/news`** (`views/NewsView.vue`) : fil d'actualités médicales (alerte, recherche, catégories).
+  `services/news.js` contient le contrat d'API attendu ; sans flux, la page affiche « bientôt disponible ».
+  `VITE_NEWS_PREVIEW=true` affiche des cartes d'exemple pour juger la mise en page.
+- Composants réutilisables : `components/ui/` (PageHeader, SectionCard, StatTile, EmptyState, SkeletonBlock, AppIcon).
+
 ## 6. Comportement du chat
 
 - Bulle en bas à droite, visible sur toutes les pages une fois connecté ; pastille rouge si une réponse arrive fenêtre fermée.

@@ -119,3 +119,15 @@ button {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ---- Jetons de design partagés (interfaces admin et médecin) ---- */
+:root {
+  --surface-2: #f8fafc;
+  --success: #1e8e5a;
+  --success-bg: #e6f6ee;
+  --warning: #b7791f;
+  --warning-bg: #fdf3dc;
+  --radius-lg: 16px;
+  --shadow-md: 0 6px 20px rgba(28, 43, 54, 0.08);
+  --content-max: 1200px;
+}
