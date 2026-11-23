@@ -1,0 +1,17 @@
+# Catalogue des dashboards Superset que l'assistant a le droit d'afficher.
+# Seuls ceux listés ici peuvent être ouverts : ni le chat, ni le navigateur ne peuvent en demander un autre.
+#
+#   key         identifiant court choisi par nous (minuscules, chiffres, - ou _)
+#   title       nom affiché à l'utilisateur
+#   uuid        UUID d'intégration (Superset : dashboard > ⋯ > Embed dashboard). Pas un secret.
+#   description phrase courte (affichée dans l'interface)
+dashboards:
+  - key: visite
+    title: AI-assistant-dashboard
+    uuid: b973604e-c78d-47ce-8fdf-876722c1aaed
+    description: Tableau de bord des visites
+
+  - key: medicale
+    title: HMH_Medical_Dashboard
+    uuid: 7893e593-7f0c-481f-8326-8e2843abe736
+    description: Tableau de bord médical

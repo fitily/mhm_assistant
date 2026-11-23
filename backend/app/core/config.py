@@ -69,6 +69,11 @@ class Settings:
     login_max_attempts: int
     login_lock_minutes: int
     cors_origins: list[str]
+    superset_url: str
+    superset_username: str
+    superset_password: str
+    superset_timeout: float
+    dashboards_path: Path
 
 
 @lru_cache(maxsize=1)
@@ -105,6 +110,11 @@ def get_settings() -> Settings:
         login_max_attempts=int(os.getenv("LOGIN_MAX_ATTEMPTS", "5")),
         login_lock_minutes=int(os.getenv("LOGIN_LOCK_MINUTES", "15")),
         cors_origins=[o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()],
+        superset_url=os.getenv("SUPERSET_URL", "http://localhost:18088").rstrip("/"),
+        superset_username=os.getenv("SUPERSET_USERNAME", ""),
+        superset_password=os.getenv("SUPERSET_PASSWORD", ""),
+        superset_timeout=float(os.getenv("SUPERSET_TIMEOUT", "10")),
+        dashboards_path=Path(os.getenv("DASHBOARDS_FILE", ROOT / "config" / "dashboards.yaml")),
     )
 
 

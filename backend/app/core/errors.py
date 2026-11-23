@@ -15,3 +15,19 @@ class QueryError(RuntimeError):
                  details: str | None = None):
         super().__init__(message)
         self.stage, self.sql, self.details = stage, sql, details
+
+
+class SupersetError(RuntimeError):
+    """Base des erreurs liées à Superset. Les messages ne contiennent jamais de secret."""
+
+
+class SupersetUnavailable(SupersetError):
+    """Superset ne répond pas (arrêté, réseau, délai dépassé, erreur serveur)."""
+
+
+class SupersetAuthError(SupersetError):
+    """Le compte technique du backend est refusé ou n'a pas les droits nécessaires."""
+
+
+class SupersetRejected(SupersetError):
+    """Superset refuse la demande (dashboard inconnu, intégration non activée...)."""
