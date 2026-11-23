@@ -42,3 +42,17 @@ Le script affiche une ligne `OK` par dashboard du catalogue (`config/dashboards.
 | `n'a pas le droit de ...` | il manque une des deux permissions du rôle |
 | `a refusé de créer le jeton invité (code 400/422)` | l'embarquement n'est pas activé pour ce dashboard (⋯ → Embed dashboard) ou l'UUID est faux |
 | `injoignable` / `délai dépassé` | Superset est arrêté ou `SUPERSET_URL` est faux |
+
+## 5. Si le dashboard ne s'affiche pas dans l'application
+
+Le backend peut donner un jeton (`check_superset.py` = OK) alors que l'iframe reste vide. Les causes habituelles
+sont des réglages **de Superset** (fichier `superset_config.py`), pas de l'application :
+
+| Ce qu'on voit | À vérifier |
+|---|---|
+| Iframe vide ou message « refused to connect » (console du navigateur : `frame-ancestors`) | Superset interdit d'être affiché dans une autre page. Autoriser l'adresse de l'application (ex. `http://localhost:5173`) dans la politique de sécurité (`TALISMAN_CONFIG` → `content_security_policy` → `frame-ancestors`). |
+| Dashboard affiché mais « no data » / graphiques en erreur de droits | Le rôle des invités (`GUEST_ROLE_NAME` dans `superset_config.py`) n'a pas accès aux jeux de données du dashboard. |
+| Erreur « embedded dashboard not found » | L'UUID du catalogue ne correspond pas à l'intégration (⋯ → Embed dashboard) ou les domaines autorisés n'incluent pas l'application. |
+| Connexion qui échoue seulement dans le navigateur | `SUPERSET_PUBLIC_URL` (adresse vue par le navigateur) est fausse ou différente de celle de Superset. |
+
+Aucun de ces réglages ne se change dans le code de l'application.

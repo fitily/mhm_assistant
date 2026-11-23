@@ -112,3 +112,17 @@ export async function clearSession({ sessionId, token }) {
     /* ce n'est pas bloquant */
   }
 }
+
+/** GET /v1/superset/dashboards (admin) -> [{ key, title, description, available }] */
+export function fetchDashboards({ token }) {
+  return request('/v1/superset/dashboards', { token })
+}
+
+/**
+ * POST /v1/superset/guest-token (admin) { dashboard: <clé du catalogue> }
+ * -> { dashboard_key, dashboard_id (UUID), token, expires_at, superset_domain }
+ * Le navigateur n'envoie qu'une CLÉ ; l'UUID est retrouvé par le backend.
+ */
+export function fetchGuestAccess({ key, token }) {
+  return request('/v1/superset/guest-token', { method: 'POST', token, body: { dashboard: key } })
+}

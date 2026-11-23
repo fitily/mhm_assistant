@@ -3,8 +3,8 @@
 //
 // Contrat d'intégration :
 //  - `state` pilote l'affichage : loading | error | empty | coming-soon | ready
-//  - l'élément `mountEl` (exposé) est TOUJOURS dans le DOM : le SDK embarqué y monte son iframe
-//    (`embedDashboard({ mountPoint: viewport.value.mountEl, ... })`). L'iframe prend 100 % du cadre.
+//  - l'élément `mountEl` (exposé) est TOUJOURS dans le DOM : composables/useSupersetEmbed.js y monte
+//    l'iframe du SDK. L'iframe prend 100 % du cadre.
 //  - en cas d'erreur, le bouton « Try again » émet `retry`.
 import { ref } from 'vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
@@ -14,6 +14,7 @@ import SkeletonBlock from '@/components/ui/SkeletonBlock.vue'
 defineProps({
   state: { type: String, default: 'loading' },
   title: { type: String, default: '' },
+  message: { type: String, default: '' }, // détail de l'erreur (état « error »)
 })
 const emit = defineEmits(['retry'])
 
@@ -45,8 +46,9 @@ defineExpose({ mountEl })
     </div>
 
     <div class="stage">
-      <!-- Point de montage de l'iframe Superset : toujours présent, visible seulement quand prêt -->
-      <div v-show="state === 'ready'" ref="mountEl" class="mount" />
+      <!-- Point de montage de l'iframe Superset : toujours présent ET visible (il garde ainsi sa taille
+           réelle pendant le chargement ; les états ci-dessous le recouvrent). -->
+      <div ref="mountEl" class="mount" />
 
       <div v-if="state === 'loading'" class="overlay" aria-busy="true" aria-live="polite">
         <div class="skeleton-grid">
@@ -57,7 +59,7 @@ defineExpose({ mountEl })
       </div>
 
       <div v-else-if="state === 'error'" class="overlay">
-        <EmptyState icon="alert" tone="danger" title="The dashboard could not be loaded" text="Check your connection and try again. If the problem persists, contact the technical team.">
+        <EmptyState icon="alert" tone="danger" title="The dashboard could not be loaded" :text="message || 'Check your connection and try again. If the problem persists, contact the technical team.'">
           <button class="btn" type="button" @click="emit('retry')">Try again</button>
         </EmptyState>
       </div>

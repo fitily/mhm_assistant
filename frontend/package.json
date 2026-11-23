@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@superset-ui/embedded-sdk": "0.4.0",
     "axios": "^1.21.1",
     "dompurify": "^3.1.6",
     "marked": "^12.0.2",

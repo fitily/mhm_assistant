@@ -1,13 +1,11 @@
 // Point d'entrée unique des données « analytics » (tableaux de bord Superset).
-// ÉTAT ACTUEL : emplacements réservés, aucun appel réseau, rien n'est connecté à Superset.
 //
-// CONTRAT pour l'intégration (étape suivante) — il suffit de remplacer le corps de `listDashboards` :
-//   GET /v1/superset/dashboards  (admin uniquement) -> [{ key, title, description, available }]
-//   `key` est un identifiant court choisi par nous ; l'UUID d'intégration et le jeton invité restent
-//   côté backend (POST /v1/superset/guest-token), le navigateur ne manipule jamais de secret.
-// Le montage de l'iframe se fera dans l'élément exposé par <DashboardViewport> (`mountEl`).
+//  - Mode réel : le catalogue et les jetons invités viennent du backend (/v1/superset/..., admin uniquement).
+//    Le navigateur ne reçoit qu'un jeton invité limité à UN dashboard et de courte durée : jamais de secret.
+//  - Mode démonstration (VITE_MOCK_AUTH=true) : trois emplacements vides, aucun appel réseau.
+import { fetchDashboards, fetchGuestAccess, isMockAuth } from './api'
 
-export const SUPERSET_CONNECTED = false
+export const SUPERSET_LIVE = !isMockAuth
 
 const PLACEHOLDER_DASHBOARDS = [
   { key: 'dashboard-1', title: 'Dashboard 1', description: 'Reserved slot', available: false },
@@ -16,6 +14,12 @@ const PLACEHOLDER_DASHBOARDS = [
 ]
 
 /** @returns {Promise<Array<{key:string,title:string,description:string,available:boolean}>>} */
-export async function listDashboards() {
-  return PLACEHOLDER_DASHBOARDS
+export async function listDashboards({ token } = {}) {
+  if (isMockAuth) return PLACEHOLDER_DASHBOARDS
+  return fetchDashboards({ token })
+}
+
+/** Jeton invité + informations d'intégration pour le dashboard `key`. */
+export function requestGuestAccess({ key, token }) {
+  return fetchGuestAccess({ key, token })
 }

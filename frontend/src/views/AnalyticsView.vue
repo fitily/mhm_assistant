@@ -1,23 +1,29 @@
 <script setup>
-// Espace « Analytics » de l'administrateur. Prêt à recevoir Superset :
-//  - le catalogue vient de services/analytics.js (à brancher sur /v1/superset/dashboards)
-//  - le tableau de bord choisi est dans l'URL (?d=clé) : lien partageable, retour arrière fonctionnel
-//  - <DashboardViewport> fournit l'état d'affichage et le point de montage de l'iframe
-import { computed, onMounted, ref } from 'vue'
+// Espace « Analytics » de l'administrateur : tableaux de bord Superset intégrés.
+//  - le catalogue vient du backend (/v1/superset/dashboards)
+//  - le tableau choisi est dans l'URL (?d=clé) : lien partageable, retour arrière fonctionnel
+//  - composables/useSupersetEmbed monte le dashboard dans <DashboardViewport>
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import AppShell from '@/components/layout/AppShell.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import StatTile from '@/components/ui/StatTile.vue'
 import DashboardSwitcher from '@/components/analytics/DashboardSwitcher.vue'
 import DashboardViewport from '@/components/analytics/DashboardViewport.vue'
-import { listDashboards, SUPERSET_CONNECTED } from '@/services/analytics'
+import { useSupersetEmbed } from '@/composables/useSupersetEmbed'
+import { listDashboards, SUPERSET_LIVE } from '@/services/analytics'
 
 const route = useRoute()
 const router = useRouter()
+const auth = useAuthStore()
 
 const dashboards = ref([])
 const listState = ref('loading') // loading | ready | error
-const viewport = ref(null) // plus tard : viewport.value.mountEl = point de montage Superset
+const listError = ref('')
+const viewport = ref(null)
+
+const embed = useSupersetEmbed({ getToken: () => auth.token, onUnauthorized: () => auth.logout() })
 
 const selectedKey = computed(() => route.query.d || dashboards.value[0]?.key || null)
 const selected = computed(() => dashboards.value.find((d) => d.key === selectedKey.value) || null)
@@ -25,22 +31,53 @@ const selected = computed(() => dashboards.value.find((d) => d.key === selectedK
 const viewportState = computed(() => {
   if (listState.value !== 'ready') return listState.value
   if (!selected.value) return 'empty'
-  return selected.value.available ? 'ready' : 'coming-soon'
+  if (!selected.value.available) return 'coming-soon'
+  return embed.state.value === 'idle' ? 'loading' : embed.state.value
+})
+const viewportMessage = computed(() => (listState.value === 'error' ? listError.value : embed.error.value))
+
+// Pastille d'état de la liaison avec Superset
+const connection = computed(() => {
+  if (!SUPERSET_LIVE) return { on: false, text: 'Demo mode: Superset not connected' }
+  if (viewportState.value === 'ready') return { on: true, text: 'Connected to Superset' }
+  if (viewportState.value === 'error') return { on: false, text: 'Superset unavailable' }
+  return { on: false, text: 'Connecting to Superset…' }
 })
 
 async function load() {
   listState.value = 'loading'
+  listError.value = ''
   try {
-    dashboards.value = await listDashboards()
+    dashboards.value = await listDashboards({ token: auth.token })
     listState.value = 'ready'
-  } catch {
+  } catch (err) {
+    if (err?.status === 401) auth.logout()
+    listError.value = err?.message || ''
     listState.value = 'error'
   }
+}
+
+async function showSelected() {
+  await nextTick()
+  const el = viewport.value?.mountEl
+  const d = selected.value
+  if (d?.available && el) embed.mount(d, el)
+  else embed.reset()
+}
+
+function retry() {
+  if (listState.value === 'error') load()
+  else showSelected()
 }
 
 function select(key) {
   router.replace({ query: { ...route.query, d: key } })
 }
+
+// Dès que le catalogue est chargé ou que le choix change, on (ré)affiche le dashboard.
+watch([selectedKey, listState], () => {
+  if (listState.value === 'ready') showSelected()
+})
 
 onMounted(load)
 </script>
@@ -53,9 +90,7 @@ onMounted(load)
       subtitle="Explore MHM indicators through interactive dashboards."
     >
       <template #actions>
-        <span class="status" :class="{ on: SUPERSET_CONNECTED }">
-          <i aria-hidden="true" />{{ SUPERSET_CONNECTED ? 'Connected to Superset' : 'Superset not connected yet' }}
-        </span>
+        <span class="status" :class="{ on: connection.on }"><i aria-hidden="true" />{{ connection.text }}</span>
       </template>
     </PageHeader>
 
@@ -75,7 +110,8 @@ onMounted(load)
         ref="viewport"
         :state="viewportState"
         :title="selected?.title"
-        @retry="load"
+        :message="viewportMessage"
+        @retry="retry"
       />
     </section>
   </AppShell>
