@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import * as api from '@/services/api'
 import { useAuthStore } from './auth'
+import { useDashboardStore } from './dashboards'
 
 const KEY = 'mhm_chat'
 const MAX_CONVERSATIONS = 20
@@ -90,6 +91,7 @@ export const useChatStore = defineStore('chat', {
     const saved = load()
     return {
       isOpen: false,
+      fullscreen: false, // fenêtre de chat en plein écran (lu par ChatWidget)
       unread: 0,
       conversations: saved.conversations,
       activeConversationId: saved.activeConversationId,
@@ -189,6 +191,7 @@ export const useChatStore = defineStore('chat', {
     /** Ferme le chat et efface tout l’historique, notamment à la déconnexion. */
     end() {
       this.isOpen = false
+      this.fullscreen = false
       this.reset()
     },
     reset() {
@@ -246,6 +249,7 @@ export const useChatStore = defineStore('chat', {
         })
         conversation.updatedAt = Date.now()
         if (!this.isOpen) this.unread++
+        if (res.action) await this.runAction(res.action, conversation)
       } catch (err) {
         if (err.status === 401) {
           auth.logout()
@@ -266,6 +270,21 @@ export const useChatStore = defineStore('chat', {
           (id) => id !== conversation.id,
         )
         this.persist()
+      }
+    },
+    /** Exécute l'action demandée par la réponse du chat (ouvrir / fermer un dashboard...). */
+    async runAction(action, conversation) {
+      const outcome = await useDashboardStore().apply(action)
+      if (outcome === 'opened') {
+        this.fullscreen = false // le chat en plein écran masquerait le dashboard qu'on vient d'ouvrir
+      } else if (outcome === 'no_previous') {
+        appendMessage(conversation, {
+          id: newId(),
+          role: 'assistant',
+          content: 'There is no previous dashboard to go back to.',
+          time: Date.now(),
+        })
+        conversation.updatedAt = Date.now()
       }
     },
     retry(messageId) {

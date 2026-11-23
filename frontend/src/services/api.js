@@ -100,6 +100,7 @@ export async function sendMessage({ message, sessionId, token }) {
     sources: (data?.sources || []).map((s) => ({ label: s.label, score: s.score })),
     table,
     notes: data?.notes || [],
+    action: data?.action || null, // ordre pour l'interface (ex. ouvrir un dashboard)
   }
 }
 

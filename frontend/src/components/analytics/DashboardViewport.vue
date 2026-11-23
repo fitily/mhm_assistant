@@ -2,7 +2,7 @@
 // Cadre dans lequel s'affichera le tableau de bord Superset.
 //
 // Contrat d'intégration :
-//  - `state` pilote l'affichage : loading | error | empty | coming-soon | ready
+//  - `state` pilote l'affichage : loading | error | empty | closed | coming-soon | ready
 //  - l'élément `mountEl` (exposé) est TOUJOURS dans le DOM : composables/useSupersetEmbed.js y monte
 //    l'iframe du SDK. L'iframe prend 100 % du cadre.
 //  - en cas d'erreur, le bouton « Try again » émet `retry`.
@@ -66,6 +66,14 @@ defineExpose({ mountEl })
 
       <div v-else-if="state === 'empty'" class="overlay">
         <EmptyState icon="layers" title="No dashboard available" text="No dashboard has been shared with your account yet." />
+      </div>
+
+      <div v-else-if="state === 'closed'" class="overlay">
+        <EmptyState
+          icon="layers"
+          title="No dashboard open"
+          text="Choose a dashboard above, or ask iA'mbovo to open one (for example: “Open the medical dashboard”)."
+        />
       </div>
 
       <div v-else-if="state === 'coming-soon'" class="overlay">

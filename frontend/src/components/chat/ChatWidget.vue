@@ -1,12 +1,18 @@
 <script setup>
-import { ref } from 'vue'
+import { computed } from 'vue'
 import { useChatStore } from '@/stores/chat'
 import ChatHeader from './ChatHeader.vue'
 import ChatHistorySidebar from './ChatHistorySidebar.vue'
 import ChatConversation from './ChatConversation.vue'
 
 const chat = useChatStore()
-const isFullscreen = ref(false)
+// L'état vit dans le store : une commande du chat (ex. ouvrir un dashboard) peut repasser en mode bulle.
+const isFullscreen = computed({
+  get: () => chat.fullscreen,
+  set: (value) => {
+    chat.fullscreen = value
+  },
+})
 
 function handleEscape() {
   if (isFullscreen.value) {

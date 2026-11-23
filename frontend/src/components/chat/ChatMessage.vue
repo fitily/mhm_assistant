@@ -90,7 +90,7 @@ const notes = computed(() => props.message.notes || [])
           </button>
         </template>
       </div>
-      <span class="time">{{ isUser ? 'Vous' : 'Assistant' }} · {{ time }}</span>
+      <span class="time">{{ isUser ? 'Vous' : 'iA\'mbovo' }} · {{ time }}</span>
     </div>
   </div>
 </template>

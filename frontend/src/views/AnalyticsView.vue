@@ -1,11 +1,13 @@
 <script setup>
 // Espace « Analytics » de l'administrateur : tableaux de bord Superset intégrés.
 //  - le catalogue vient du backend (/v1/superset/dashboards)
-//  - le tableau choisi est dans l'URL (?d=clé) : lien partageable, retour arrière fonctionnel
+//  - le dashboard affiché est dans le store (stores/dashboards.js) : le chat peut l'ouvrir, le changer
+//    ou le fermer ; l'URL (?d=clé) le reflète (lien partageable, retour arrière)
 //  - composables/useSupersetEmbed monte le dashboard dans <DashboardViewport>
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useDashboardStore } from '@/stores/dashboards'
 import AppShell from '@/components/layout/AppShell.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import StatTile from '@/components/ui/StatTile.vue'
@@ -17,6 +19,7 @@ import { listDashboards, SUPERSET_LIVE } from '@/services/analytics'
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+const dash = useDashboardStore()
 
 const dashboards = ref([])
 const listState = ref('loading') // loading | ready | error
@@ -25,11 +28,13 @@ const viewport = ref(null)
 
 const embed = useSupersetEmbed({ getToken: () => auth.token, onUnauthorized: () => auth.logout() })
 
-const selectedKey = computed(() => route.query.d || dashboards.value[0]?.key || null)
-const selected = computed(() => dashboards.value.find((d) => d.key === selectedKey.value) || null)
+const urlKey = computed(() => (typeof route.query.d === 'string' ? route.query.d : null))
+const selectedKey = computed(() => dash.current)
+const selected = computed(() => dashboards.value.find((d) => d.key === dash.current) || null)
 
 const viewportState = computed(() => {
   if (listState.value !== 'ready') return listState.value
+  if (dash.closed && !dash.current) return 'closed'
   if (!selected.value) return 'empty'
   if (!selected.value.available) return 'coming-soon'
   return embed.state.value === 'idle' ? 'loading' : embed.state.value
@@ -71,15 +76,41 @@ function retry() {
 }
 
 function select(key) {
-  router.replace({ query: { ...route.query, d: key } })
+  dash.open(key)
 }
 
-// Dès que le catalogue est chargé ou que le choix change, on (ré)affiche le dashboard.
-watch([selectedKey, listState], () => {
-  if (listState.value === 'ready') showSelected()
+// Au chargement du catalogue : lien direct (?d=) > dernier dashboard ouvert > le premier.
+function initSelection() {
+  if (dash.closed) return
+  const wanted = urlKey.value ?? dash.current ?? dashboards.value[0]?.key
+  if (wanted && wanted !== dash.current) dash.open(wanted, { remember: false })
+}
+
+// Le store pilote l'affichage ; l'URL suit.
+watch([() => dash.current, listState], () => {
+  if (listState.value !== 'ready') return
+  showSelected()
+})
+watch(
+  () => dash.current,
+  (key) => {
+    if (key === urlKey.value || (!key && urlKey.value === null)) return
+    const { d: _ignored, ...rest } = route.query
+    router.replace({ query: key ? { ...rest, d: key } : rest })
+  },
+)
+// Retour arrière / lien modifié à la main
+watch(urlKey, (key) => {
+  if (key && key !== dash.current && listState.value === 'ready') dash.open(key)
+})
+watch(listState, (state) => {
+  if (state === 'ready') initSelection()
 })
 
-onMounted(load)
+onMounted(() => {
+  dash.closed = false // une nouvelle visite de la page ne reste pas « fermée »
+  load()
+})
 </script>
 
 <template>
