@@ -70,6 +70,7 @@ class Settings:
     login_lock_minutes: int
     cors_origins: list[str]
     superset_url: str
+    superset_public_url: str
     superset_username: str
     superset_password: str
     superset_timeout: float
@@ -111,6 +112,8 @@ def get_settings() -> Settings:
         login_lock_minutes=int(os.getenv("LOGIN_LOCK_MINUTES", "15")),
         cors_origins=[o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()],
         superset_url=os.getenv("SUPERSET_URL", "http://localhost:18088").rstrip("/"),
+        # Adresse de Superset vue par le NAVIGATEUR (peut différer de SUPERSET_URL, vue par le backend)
+        superset_public_url=(os.getenv("SUPERSET_PUBLIC_URL") or os.getenv("SUPERSET_URL", "http://localhost:18088")).rstrip("/"),
         superset_username=os.getenv("SUPERSET_USERNAME", ""),
         superset_password=os.getenv("SUPERSET_PASSWORD", ""),
         superset_timeout=float(os.getenv("SUPERSET_TIMEOUT", "10")),
