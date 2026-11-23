@@ -29,6 +29,7 @@ class Dashboard:
     title: str
     uuid: str
     description: str = ""
+    keywords: tuple[str, ...] = ()  # mots par lesquels l'utilisateur peut désigner ce dashboard dans le chat
 
 
 class DashboardCatalog:
@@ -81,7 +82,12 @@ def _parse(item, position: int) -> Dashboard:
         normalized = str(uuid.UUID(raw_uuid))
     except ValueError:
         raise ConfigurationError(f"dashboards.yaml : UUID invalide pour « {key} ».") from None
-    return Dashboard(key=key, title=title, uuid=normalized, description=str(item.get("description", "")).strip())
+    raw_keywords = item.get("keywords") or []
+    if not isinstance(raw_keywords, list):
+        raise ConfigurationError(f"dashboards.yaml : « keywords » de « {key} » doit être une liste.")
+    keywords = tuple(str(k).strip() for k in raw_keywords if str(k).strip())
+    return Dashboard(key=key, title=title, uuid=normalized,
+                     description=str(item.get("description", "")).strip(), keywords=keywords)
 
 
 @lru_cache(maxsize=1)

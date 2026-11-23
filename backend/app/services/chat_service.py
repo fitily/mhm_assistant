@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import logging
 from collections.abc import Callable
 from dataclasses import replace
 
@@ -10,7 +11,9 @@ import httpx
 from app.core.audit import audit
 from app.core.config import debug_trace, get_settings
 from app.core.dictionary import approved_views
-from app.domain import permissions, prompts, router
+from app.core.errors import ConfigurationError
+from app.domain import dashboard_intent, permissions, prompts, router
+from app.domain.dashboard_catalog import get_catalog
 from app.domain.formatting import format_history
 from app.domain.models import AnswerResult
 from app.domain.periods import normalize_question, parse_period
@@ -43,8 +46,31 @@ from app.services.document_answers import (
     _knowledge_attitude_link_polarities,
     _research_guidance,
 )
-from app.services import document_answers
+from app.services import dashboard_answers, document_answers
 from app.services.tabular_answers import _compose, _tabular
+
+
+log = logging.getLogger("mhm.chat")
+
+
+def _dashboard_command(question: str, language: str, role: str | None) -> AnswerResult | None:
+    """Commande « ouvre / ferme / change de tableau de bord » : traitée avant tout routage (sans IA).
+
+    Retourne None si la phrase n'en est pas une (le routage habituel SQL / DOCS / CHAT continue).
+    Si le catalogue est illisible, le chat continue de fonctionner normalement.
+    """
+    try:
+        dashboards = get_catalog().all()
+    except ConfigurationError as exc:
+        log.error("Catalogue de dashboards indisponible : %s", exc)
+        return None
+    command = dashboard_intent.detect(question, dashboards)
+    if command is None:
+        return None
+    if role is not None and not permissions.is_allowed(role, dashboard_answers.MODE):
+        return AnswerResult(MODE_FORBIDDEN[dashboard_answers.MODE][language], "CHAT",
+                            audit_stage=f"forbidden:{dashboard_answers.MODE}")
+    return dashboard_answers.build(command, language)
 
 
 def _docs(
@@ -167,6 +193,12 @@ def answer(
         return AnswerResult(messages[language], "CHAT")
     if forced and forced not in {"SQL", "DOCS"}:
         raise ValueError("Le mode forcé doit être SQL ou DOCS.")
+
+    if not forced:
+        handled = _dashboard_command(question, language, role)
+        if handled is not None:
+            audit(user, question, handled.mode, handled.audit_stage, None, None)
+            return handled
 
     debug_trace(
         "Timeouts configurés",

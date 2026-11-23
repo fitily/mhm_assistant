@@ -16,6 +16,7 @@ class AnswerResult:
     notes: tuple[str, ...] = ()
     data: dict | None = None  # {"columns": [...], "rows": [...]} pour l'interface Vue
     streamed: bool = False
+    action: dict | None = None  # ordre pour l'interface (ex. ouvrir un dashboard) : voir dashboard_answers
 
 
 @dataclass

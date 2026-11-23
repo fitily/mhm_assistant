@@ -42,7 +42,7 @@ def isolated(monkeypatch):
 @pytest.mark.parametrize(("role", "mode", "expected"), [
     ("doctor", "DOCS", True), ("doctor", "CHAT", True), ("doctor", "SQL", False),
     ("admin", "SQL", True), ("admin", "CHAT", True), ("admin", "DOCS", False),
-    (None, "CHAT", False), ("root", "SQL", False), ("doctor", "DASHBOARD", False),
+    (None, "CHAT", False), ("root", "SQL", False), ("doctor", "DASHBOARD", False), ("admin", "DASHBOARD", True),
 ])
 def test_is_allowed(role, mode, expected):
     assert permissions.is_allowed(role, mode) is expected

@@ -29,3 +29,4 @@ class ChatResponse(BaseModel):
     notes: list[str] = []
     sources: list[Source] = []
     data: dict | None = None  # {"columns": [...], "rows": [[...]]} pour tableaux / graphiques
+    action: dict | None = None  # ordre pour l'interface : {"type": "open_dashboard", "dashboard": "<clé>", ...}

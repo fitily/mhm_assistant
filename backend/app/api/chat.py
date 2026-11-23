@@ -34,7 +34,8 @@ def chat(req: ChatRequest, principal: Principal = Depends(chat_user)) -> ChatRes
     return ChatResponse(
         text=result.text, sender=ASSISTANT_NAME, mode=result.mode,
         sql=result.sql, notes=list(result.notes),
-        sources=[Source(score=s, label=l) for s, l in result.sources], data=result.data)
+        sources=[Source(score=s, label=l) for s, l in result.sources], data=result.data,
+        action=result.action)
 
 
 @router.post("/chat/stream")
@@ -60,7 +61,7 @@ def chat_stream(req: ChatRequest, principal: Principal = Depends(chat_user)) -> 
                 text=result.text, sender=ASSISTANT_NAME, mode=result.mode,
                 sql=result.sql, notes=list(result.notes),
                 sources=[Source(score=score, label=label) for score, label in result.sources],
-                data=result.data)
+                data=result.data, action=result.action)
             events.put(("complete", response.model_dump()))
         except Exception as exc:
             debug_trace("API flux échoué", error=type(exc).__name__)

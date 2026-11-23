@@ -80,6 +80,17 @@ MODE_FORBIDDEN = {
                "momba ny antontan'isa ny marary, ny fizahana, ny fivoahana ary ny aretina aho."),
     },
 }
+MODE_FORBIDDEN["DASHBOARD"] = {
+    "fr": ("Les tableaux de bord ne sont pas disponibles pour votre profil (médecin). "
+           "Je peux répondre à vos questions de santé à partir des documents chargés. "
+           "Pour consulter un tableau de bord, contactez un administrateur."),
+    "en": ("Dashboards are not available for your profile (doctor). "
+           "I can answer your health questions using the loaded documents. "
+           "To view a dashboard, please contact an administrator."),
+    "mg": ("Tsy azo ampiasaina amin'ny mombamomba anao (dokotera) ny dashboard. "
+           "Afaka mamaly ny fanontaniana ara-pahasalamana avy amin'ireo antontan-taratasy "
+           "nampidirina aho. Raha mila mijery dashboard ianao, mifandraisa amin'ny mpitantana."),
+}
 ACCESS_DENIED = {
     "fr": "Accès refusé pour votre profil.",
     "en": "Access denied for your profile.",
