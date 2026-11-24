@@ -195,8 +195,11 @@ const visibleShortcuts = computed(() => shortcuts.filter((s) => s.roles.includes
 }
 
 /* ---- « Get started » : cartes de questions rapides ---- */
+/* flex + centrage : 2 cartes restent centrées (pas de vide à droite), 3 cartes se partagent la ligne */
 .grid.shortcuts {
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 18px;
 }
 .shortcut {
@@ -205,6 +208,8 @@ const visibleShortcuts = computed(() => shortcuts.filter((s) => s.roles.includes
   --accent-bg: var(--mhm-blue-50);
   position: relative;
   display: flex;
+  flex: 1 1 280px;
+  max-width: 440px;
   flex-direction: column;
   align-items: stretch;
   gap: 10px;
@@ -221,13 +226,14 @@ const visibleShortcuts = computed(() => shortcuts.filter((s) => s.roles.includes
   box-shadow: var(--shadow-sm);
   transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
 }
+/* accents : uniquement les couleurs de la charte MHM (bleu, ardoise, bleu foncé) */
 .shortcut:nth-child(3n + 2) {
-  --accent: var(--success);
-  --accent-bg: var(--success-bg);
-}
-.shortcut:nth-child(3n + 3) {
   --accent: var(--mhm-slate);
   --accent-bg: #e7eef3;
+}
+.shortcut:nth-child(3n + 3) {
+  --accent: var(--mhm-blue-dark);
+  --accent-bg: var(--mhm-blue-100);
 }
 /* filet d'accent en bas, qui se déploie au survol */
 .shortcut::after {
@@ -341,20 +347,16 @@ const visibleShortcuts = computed(() => shortcuts.filter((s) => s.roles.includes
     grid-template-columns: minmax(0, 1fr);
   }
 }
-@media (max-width: 900px) {
-  .grid.shortcuts {
-    grid-template-columns: repeat(2, minmax(0, 1fr)); /* tablette : 2 colonnes */
-  }
-}
 @media (max-width: 520px) {
   .welcome {
     padding: 22px 18px;
   }
   .grid.shortcuts {
-    grid-template-columns: minmax(0, 1fr); /* mobile : 1 colonne, cartes plus compactes */
     gap: 12px;
   }
   .shortcut {
+    flex-basis: 100%; /* mobile : 1 colonne, cartes plus compactes */
+    max-width: none;
     min-height: 0;
     padding: 18px;
   }
