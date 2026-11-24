@@ -156,8 +156,14 @@ export const useChatStore = defineStore('chat', {
     minimize() {
       this.isOpen = false
     },
+    /** Bulle flottante : ouvre toujours la petite fenêtre (même si le chat avait été vu en plein écran). */
     toggle() {
-      this.isOpen ? this.minimize() : this.open()
+      if (this.isOpen) {
+        this.minimize()
+        return
+      }
+      this.fullscreen = false
+      this.open()
     },
     startConversation() {
       const current = this.activeConversation
