@@ -6,13 +6,13 @@
 #   monthly_trend  : nombre de lignes du dernier mois COMPLET des données, avec l'évolution (%) face au mois précédent.
 kpis:
   - key: new_patients_7d
-    label: New patients
+    label: New patients (Last 7 Days)
     kind: rolling_7_days
     view: analytics.v_patients_masked
     date_column: registered_at
 
   - key: admissions_7d
-    label: Admissions
+    label: Admissions (Last 7 Days)
     kind: rolling_7_days
     view: analytics.v_visits
     date_column: visit_date
