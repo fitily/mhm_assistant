@@ -41,9 +41,17 @@ NONE_AVAILABLE = {
 
 
 LISTING = {
-    "fr": "Il y a {n} tableau(x) de bord disponible(s) :\n{items}\nDites par exemple « ouvre le tableau de bord {key} ».",
-    "en": "There are {n} dashboard(s) available:\n{items}\nFor example, say “open the {key} dashboard”.",
-    "mg": "Misy dashboard {n} azo jerena:\n{items}\nOhatra: « sokafy ny dashboard {key} ».",
+    "fr": "Tableaux de bord disponibles ({n}) :\n{items}\nDites par exemple « ouvre le tableau de bord {key} ».",
+    "en": "Available dashboards ({n}):\n{items}\nFor example, say “open the dashboard {key}”.",
+    "mg": "Dashboard azo jerena ({n}):\n{items}\nOhatra: « sokafy ny dashboard {key} ».",
+}
+CANNOT_CREATE = {
+    "fr": ("Je ne peux pas créer de nouveau tableau de bord : je peux seulement ouvrir ceux qui existent déjà.\n"
+           "{listing}\nPour obtenir des chiffres, posez directement votre question statistique."),
+    "en": ("I can't create a new dashboard: I can only open the existing ones.\n"
+           "{listing}\nFor figures, just ask your statistics question directly."),
+    "mg": ("Tsy afaka mamorona dashboard vaovao aho: ny efa misy ihany no azoko sokafana.\n"
+           "{listing}\nRaha mila tarehimarika ianao, apetraho mivantana ny fanontanianao."),
 }
 
 
@@ -53,11 +61,14 @@ def _listing(command: DashboardCommand, language: str) -> AnswerResult:
         return AnswerResult(NONE_AVAILABLE[language], MODE, audit_stage="dashboard_none")
     items = "\n".join(f"- « {d.title} »" + (f" : {d.description}" if d.description else "") for d in dashboards)
     text = LISTING[language].format(n=len(dashboards), items=items, key=dashboards[0].key)
+    if command.intent == "create_dashboard":
+        return AnswerResult(CANNOT_CREATE[language].format(listing=text.split("\n", 1)[1].rsplit("\n", 1)[0]),
+                            MODE, audit_stage="dashboard_create_refused")
     return AnswerResult(text, MODE, audit_stage="dashboard_list")
 
 
 def build(command: DashboardCommand, language: str) -> AnswerResult:
-    if command.intent == "list_dashboards":
+    if command.intent in ("list_dashboards", "create_dashboard"):
         return _listing(command, language)
     if command.intent == "close_dashboard":
         return AnswerResult(CLOSING[language], MODE, audit_stage="dashboard_close",

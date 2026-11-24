@@ -4,6 +4,7 @@
   « passe au dashboard médical »                      -> switch_dashboard
   « reviens au tableau de bord précédent »            -> switch_dashboard (précédent)
   « ferme le dashboard »                              -> close_dashboard
+  « génère / crée un dashboard »                       -> create_dashboard (impossible : réponse honnête + liste)
   « combien de dashboards ? », « quels dashboards ? »  -> list_dashboards (réponse tirée du catalogue)
   « reviens au précédent », « ferme-le »               -> seulement si le message précédent était une commande de dashboard
   tout le reste (questions chiffrées, documents...)   -> None : le routage habituel (SQL / DOCS / CHAT) continue
@@ -38,6 +39,9 @@ _LIST_DASH = re.compile(
     rf"|\b(?:liste|lister|list|listing)\b.{{0,15}}{_DASH}"
     rf"|\b{_DASH}\s+(?:disponibles?|available|existants?)\b"
     rf"|\b{_DASH}\b.{{0,25}}\b(?:avez vous|as tu|do you have|have you got|tu as|vous avez)\b")
+# Créer un nouveau dashboard : impossible depuis le chat (on ne sait qu'ouvrir ceux du catalogue).
+_CREATE = re.compile(
+    rf"\b(?:generat\w*|genere\w*|create|creat\w*|cree\w*|build|construi\w*|mamorona)\b.{{0,60}}{_DASH}")
 _OPEN = re.compile(
     r"\b(?:montre|montres|montrer|montrez|affiche|afficher|affichez|ouvre|ouvrir|ouvrez|"
     r"visualise|visualiser|voir|fais moi voir|show|display|open|view|see|load|pull up|"
@@ -65,7 +69,7 @@ _PREVIOUS = re.compile(
 
 @dataclass(frozen=True)
 class DashboardCommand:
-    intent: str                                  # show_dashboard | switch_dashboard | close_dashboard | list_dashboards
+    intent: str                                  # show_dashboard | switch_dashboard | close_dashboard | list_dashboards | create_dashboard
     previous: bool = False                       # « revenir au précédent »
     dashboard: Dashboard | None = None           # dashboard identifié sans ambiguïté
     choices: tuple[Dashboard, ...] = ()          # plusieurs possibles (ou aucun précisé) : il faut demander
@@ -95,6 +99,8 @@ def detect(question: str, dashboards: list[Dashboard], *, after_dashboard: bool 
     text = normalize(question)
     if _DASH_RE.search(text) and (_COUNT_DASH.search(text) or _LIST_DASH.search(text)):
         return DashboardCommand("list_dashboards", listing=tuple(dashboards))
+    if _CREATE.search(text):
+        return DashboardCommand("create_dashboard", listing=tuple(dashboards))
     if not _DASH_RE.search(text):
         if after_dashboard and len(text) <= _BARE_MAX_CHARS:
             if _PREVIOUS_BARE.search(text):

@@ -37,3 +37,6 @@ L'action ne contient jamais d'UUID ni d'URL : l'interface obtient l'accès par `
 
 Limite connue : une question chiffrée formulée de façon inattendue peut encore être traduite en SQL par le modèle ;
 pour la diagnostiquer, relever la ligne correspondante dans `logs/audit_log.jsonl`.
+
+| « Génère / crée un dashboard… », « generate a dashboard… » | Réponse honnête : création impossible, liste des dashboards existants. Le modèle n'invente plus de dashboard. |
+| « oui », « yes please », « ok » seuls | « Je n'ai rien en attente de confirmation… » : plus jamais réécrits en une ancienne question puis lancés en SQL. |

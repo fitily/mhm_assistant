@@ -210,6 +210,8 @@ def answer(
         handled = _dashboard_command(question, language, role, history)
         if handled is None:
             handled = identity_answers.build(question, language, role)
+        if handled is None:
+            handled = identity_answers.confirmation(question, language)
         if handled is not None:
             audit(user, question, handled.mode, handled.audit_stage, None, None)
             return handled

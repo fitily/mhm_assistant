@@ -73,3 +73,22 @@ def _capabilities(language: str, role: str | None, *, with_intro: bool) -> str:
     lines = "\n".join(f"- {_ABILITIES[m][language]}" for m in modes)
     intro = _INTRO[language]
     return f"\n\n{intro}\n{lines}" if with_intro else f"{intro}\n{lines}"
+
+
+# « oui », « yes please », « ok » seuls : iA'mbovo n'a aucune action en attente à confirmer. Sans cette règle,
+# le modèle réécrivait « yes please » en une vieille question de l'historique et la relançait en SQL.
+_CONFIRM = re.compile(
+    r"^(?:oui|yes|yep|yeah|ok|okay|d accord|bien sur|sure|please|vas y|go ahead|eny|ie)"
+    r"(?: (?:please|s il (?:te|vous) plait|merci|thanks|azafady))?$")
+_NOTHING_PENDING = {
+    "fr": "Je n'ai rien en attente de confirmation. Pouvez-vous me dire précisément ce que vous souhaitez ?",
+    "en": "I have nothing waiting for confirmation. Could you tell me exactly what you would like?",
+    "mg": "Tsy misy miandry fankatoavana aho. Azafady, lazao mazava izay tianao.",
+}
+
+
+def confirmation(question: str, language: str) -> AnswerResult | None:
+    text = dashboard_intent.normalize(question).strip(" .!?,;:")
+    if len(text) <= MAX_CHARS and _CONFIRM.fullmatch(text):
+        return AnswerResult(_NOTHING_PENDING[language], "CHAT", audit_stage="bare_confirmation")
+    return None

@@ -108,7 +108,7 @@ def test_api_returns_action_only_for_admin(role, has_action):
 def test_how_many_dashboards_is_answered_from_the_catalog_not_sql():
     result = chat_service.answer("how many dashboard do you have there to show?", role="admin")
     assert result.mode == "DASHBOARD" and result.action is None
-    assert "2 dashboard" in result.text
+    assert "(2)" in result.text
     assert "AI-assistant-dashboard" in result.text and "HMH_Medical_Dashboard" in result.text
 
 
@@ -137,3 +137,21 @@ def test_who_are_you_has_a_fixed_correct_answer(isolated):
 def test_what_can_you_do_lists_only_the_rights_of_the_role():
     doctor = chat_service.answer("What can you do?", role="doctor")
     assert "documents" in doctor.text and "dashboard" not in doctor.text.lower()
+
+
+def test_creating_a_dashboard_is_refused_honestly_and_lists_the_real_ones():
+    q = "can you retrieve information from the database and generate for me a dashboard about the repartition of the patients by district"
+    result = chat_service.answer(q, role="admin")
+    assert result.mode == "DASHBOARD" and result.action is None
+    assert result.text.startswith("I can't create a new dashboard")
+    assert "HMH_Medical_Dashboard" in result.text and "HMH_Patients_Dashboard" not in result.text
+    assert "Génère" not in result.text
+    assert chat_service.answer("Crée un tableau de bord des patients", role="admin").text.startswith("Je ne peux pas créer")
+
+
+@pytest.mark.parametrize("text", ["yes please", "Oui", "ok", "D'accord !", "Eny"])
+def test_bare_confirmation_never_reaches_sql(text, isolated):
+    history = [("How many female patients at MHM?", "29 695")]
+    result = chat_service.answer(text, role="admin", history=history)
+    assert result.mode == "CHAT" and result.sql is None
+    assert isolated["audit"][-1][3] == "bare_confirmation"

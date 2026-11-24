@@ -148,3 +148,12 @@ def test_short_phrases_do_not_swallow_other_questions_after_a_dashboard():
     assert detect("How many patients are there at MHM?", BOTH, after_dashboard=True) is None
     assert detect("Go back to the previous quarter data for visits in the region of Analamanga", BOTH,
                   after_dashboard=True) is None
+
+
+@pytest.mark.parametrize("question", [
+    "generate for me a dashboard about patients by district",
+    "Crée un tableau de bord des patients",
+    "Build a dashboard of visits",
+])
+def test_creation_requests_are_detected(question):
+    assert detect(question, BOTH).intent == "create_dashboard"
