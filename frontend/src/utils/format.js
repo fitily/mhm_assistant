@@ -16,3 +16,15 @@ export function timeAgo(iso, now = Date.now()) {
   }
   return 'Just now'
 }
+
+/** 12345 -> « 12 345 » (même style que les chiffres du chat). Tiret si la valeur n'est pas un nombre. */
+export function formatNumber(value) {
+  return Number.isFinite(value) ? new Intl.NumberFormat('fr-FR').format(value) : '—'
+}
+
+/** 8.3 -> « +8,3 % » ; -2 -> « −2 % » ; null -> chaîne vide. */
+export function formatTrend(percent) {
+  if (!Number.isFinite(percent)) return ''
+  const sign = percent > 0 ? '+' : percent < 0 ? '−' : ''
+  return `${sign}${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(Math.abs(percent))} %`
+}

@@ -15,6 +15,8 @@ import DashboardSwitcher from '@/components/analytics/DashboardSwitcher.vue'
 import DashboardViewport from '@/components/analytics/DashboardViewport.vue'
 import { useSupersetEmbed } from '@/composables/useSupersetEmbed'
 import { listDashboards, SUPERSET_LIVE } from '@/services/analytics'
+import { listKpis } from '@/services/kpis'
+import { formatNumber, formatTrend } from '@/utils/format'
 
 const route = useRoute()
 const router = useRouter()
@@ -25,6 +27,23 @@ const dashboards = ref([])
 const listState = ref('loading') // loading | ready | error
 const listError = ref('')
 const viewport = ref(null)
+
+// Indicateurs clés (GET /v1/kpis). Un indicateur en panne s'affiche « Unavailable » sans bloquer les autres.
+const kpis = ref([])
+const kpiState = ref('loading') // loading | ready | error
+const KPI_SKELETON = ['new_patients_7d', 'admissions_7d', 'visits_last_month']
+
+async function loadKpis() {
+  kpiState.value = 'loading'
+  try {
+    kpis.value = await listKpis({ token: auth.token })
+    kpiState.value = 'ready'
+  } catch (err) {
+    if (err?.status === 401) auth.logout()
+    kpiState.value = 'error'
+  }
+}
+const trendDirection = (kpi) => (kpi.delta_percent > 0 ? 'up' : kpi.delta_percent < 0 ? 'down' : 'flat')
 
 const embed = useSupersetEmbed({ getToken: () => auth.token, onUnauthorized: () => auth.logout() })
 
@@ -110,6 +129,7 @@ watch(listState, (state) => {
 onMounted(() => {
   dash.closed = false // une nouvelle visite de la page ne reste pas « fermée »
   load()
+  loadKpis()
 })
 </script>
 
@@ -125,9 +145,27 @@ onMounted(() => {
       </template>
     </PageHeader>
 
-    <!-- Zone réservée aux indicateurs clés (à alimenter plus tard) -->
-    <section class="kpis" aria-label="Key indicators">
-      <StatTile v-for="n in 4" :key="n" label="Key indicator" hint="Available soon" placeholder />
+    <!-- Indicateurs clés : calculés par le backend (GET /v1/kpis) -->
+    <section class="kpis" aria-label="Key indicators" :aria-busy="kpiState === 'loading'">
+      <template v-if="kpiState === 'ready'">
+        <StatTile
+          v-for="kpi in kpis"
+          :key="kpi.key"
+          :label="kpi.label"
+          :value="kpi.error ? '—' : formatNumber(kpi.value)"
+          :hint="kpi.hint"
+          :trend="formatTrend(kpi.delta_percent)"
+          :trend-direction="trendDirection(kpi)"
+          :error="kpi.error"
+          :placeholder="kpi.value === null && !kpi.error"
+        />
+      </template>
+      <template v-else-if="kpiState === 'error'">
+        <StatTile v-for="key in KPI_SKELETON" :key="key" label="Indicator" value="—" hint="Unavailable" error />
+      </template>
+      <template v-else>
+        <StatTile v-for="key in KPI_SKELETON" :key="key" label="Loading…" hint=" " placeholder />
+      </template>
     </section>
 
     <section class="board" aria-label="Dashboards">
@@ -172,7 +210,7 @@ onMounted(() => {
 }
 .kpis {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
   margin-bottom: 22px;
 }

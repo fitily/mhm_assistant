@@ -114,6 +114,11 @@ export async function clearSession({ sessionId, token }) {
   }
 }
 
+/** GET /v1/kpis (admin) -> [{ key, label, value (nombre ou null), hint, delta_percent, error }] */
+export function fetchKpis({ token }) {
+  return request('/v1/kpis', { token })
+}
+
 /** GET /v1/superset/dashboards (admin) -> [{ key, title, description, available }] */
 export function fetchDashboards({ token }) {
   return request('/v1/superset/dashboards', { token })

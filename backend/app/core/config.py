@@ -75,6 +75,7 @@ class Settings:
     superset_password: str
     superset_timeout: float
     dashboards_path: Path
+    kpis_path: Path
 
 
 @lru_cache(maxsize=1)
@@ -118,6 +119,7 @@ def get_settings() -> Settings:
         superset_password=os.getenv("SUPERSET_PASSWORD", ""),
         superset_timeout=float(os.getenv("SUPERSET_TIMEOUT", "10")),
         dashboards_path=Path(os.getenv("DASHBOARDS_FILE", ROOT / "config" / "dashboards.yaml")),
+        kpis_path=Path(os.getenv("KPIS_FILE", ROOT / "config" / "kpis.yaml")),
     )
 
 

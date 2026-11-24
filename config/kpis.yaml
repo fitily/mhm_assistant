@@ -1,0 +1,24 @@
+# Indicateurs clés de la page Analytics (admin). Aucun SQL ici : on désigne une vue et une colonne de date
+# du dictionnaire (config/data_dictionary.yaml), et le code écrit lui-même la requête (COUNT(*)).
+#
+# kind :
+#   rolling_7_days : nombre de lignes des 7 derniers jours, aujourd'hui inclus (0 s'il n'y en a aucune).
+#   monthly_trend  : nombre de lignes du dernier mois COMPLET des données, avec l'évolution (%) face au mois précédent.
+kpis:
+  - key: new_patients_7d
+    label: New patients
+    kind: rolling_7_days
+    view: analytics.v_patients_masked
+    date_column: registered_at
+
+  - key: admissions_7d
+    label: Admissions
+    kind: rolling_7_days
+    view: analytics.v_visits
+    date_column: visit_date
+
+  - key: visits_last_month
+    label: Visits last month
+    kind: monthly_trend
+    view: analytics.v_visits
+    date_column: visit_date
