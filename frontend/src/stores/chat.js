@@ -148,6 +148,11 @@ export const useChatStore = defineStore('chat', {
       this.isOpen = true
       this.unread = 0
     },
+    /** Ouvre le chat directement en plein écran (boutons « Ask iA'mbovo » de la barre latérale et de l'accueil). */
+    openFullscreen() {
+      this.fullscreen = true
+      this.open()
+    },
     minimize() {
       this.isOpen = false
     },

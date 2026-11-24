@@ -65,7 +65,7 @@ const visibleShortcuts = computed(() => shortcuts.filter((s) => s.roles.includes
         Welcome to <strong>iA'mbovo</strong>. Click the blue bubble at the bottom right to chat with the
         assistant, or choose a question below.
       </p>
-      <button class="btn" type="button" @click="chat.open()">iA'mbovo</button>
+      <button class="btn" type="button" @click="chat.openFullscreen()">iA'mbovo</button>
     </section>
 
     <section v-if="workspaces.length" aria-labelledby="workspace-title">

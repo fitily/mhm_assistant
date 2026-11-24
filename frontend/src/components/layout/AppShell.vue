@@ -28,7 +28,7 @@ const items = computed(() => navFor(auth.role))
       </nav>
 
       <div class="side-bottom">
-        <button class="ask" type="button" @click="chat.open()">
+        <button class="ask" type="button" @click="chat.openFullscreen()">
           <AppIcon name="chat" :size="18" />
           <span>Ask iA'mbovo</span>
         </button>
