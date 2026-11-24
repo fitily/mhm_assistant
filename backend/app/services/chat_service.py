@@ -46,14 +46,25 @@ from app.services.document_answers import (
     _knowledge_attitude_link_polarities,
     _research_guidance,
 )
-from app.services import dashboard_answers, document_answers
+from app.services import dashboard_answers, document_answers, identity_answers
 from app.services.tabular_answers import _compose, _tabular
 
 
 log = logging.getLogger("mhm.chat")
 
 
-def _dashboard_command(question: str, language: str, role: str | None) -> AnswerResult | None:
+def _last_was_dashboard(history, dashboards) -> bool:
+    """Le message précédent de la conversation était-il une commande de dashboard ? (pour « reviens au précédent »)"""
+    if not history:
+        return False
+    try:
+        last_question = history[-1][0]
+    except (IndexError, TypeError):
+        return False
+    return isinstance(last_question, str) and dashboard_intent.detect(last_question, dashboards) is not None
+
+
+def _dashboard_command(question: str, language: str, role: str | None, history=None) -> AnswerResult | None:
     """Commande « ouvre / ferme / change de tableau de bord » : traitée avant tout routage (sans IA).
 
     Retourne None si la phrase n'en est pas une (le routage habituel SQL / DOCS / CHAT continue).
@@ -64,7 +75,8 @@ def _dashboard_command(question: str, language: str, role: str | None) -> Answer
     except ConfigurationError as exc:
         log.error("Catalogue de dashboards indisponible : %s", exc)
         return None
-    command = dashboard_intent.detect(question, dashboards)
+    command = dashboard_intent.detect(
+        question, dashboards, after_dashboard=_last_was_dashboard(history, dashboards))
     if command is None:
         return None
     if role is not None and not permissions.is_allowed(role, dashboard_answers.MODE):
@@ -195,7 +207,9 @@ def answer(
         raise ValueError("Le mode forcé doit être SQL ou DOCS.")
 
     if not forced:
-        handled = _dashboard_command(question, language, role)
+        handled = _dashboard_command(question, language, role, history)
+        if handled is None:
+            handled = identity_answers.build(question, language, role)
         if handled is not None:
             audit(user, question, handled.mode, handled.audit_stage, None, None)
             return handled

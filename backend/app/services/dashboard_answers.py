@@ -40,7 +40,25 @@ NONE_AVAILABLE = {
 }
 
 
+LISTING = {
+    "fr": "Il y a {n} tableau(x) de bord disponible(s) :\n{items}\nDites par exemple « ouvre le tableau de bord {key} ».",
+    "en": "There are {n} dashboard(s) available:\n{items}\nFor example, say “open the {key} dashboard”.",
+    "mg": "Misy dashboard {n} azo jerena:\n{items}\nOhatra: « sokafy ny dashboard {key} ».",
+}
+
+
+def _listing(command: DashboardCommand, language: str) -> AnswerResult:
+    dashboards = command.listing
+    if not dashboards:
+        return AnswerResult(NONE_AVAILABLE[language], MODE, audit_stage="dashboard_none")
+    items = "\n".join(f"- « {d.title} »" + (f" : {d.description}" if d.description else "") for d in dashboards)
+    text = LISTING[language].format(n=len(dashboards), items=items, key=dashboards[0].key)
+    return AnswerResult(text, MODE, audit_stage="dashboard_list")
+
+
 def build(command: DashboardCommand, language: str) -> AnswerResult:
+    if command.intent == "list_dashboards":
+        return _listing(command, language)
     if command.intent == "close_dashboard":
         return AnswerResult(CLOSING[language], MODE, audit_stage="dashboard_close",
                             action={"type": "close_dashboard"})

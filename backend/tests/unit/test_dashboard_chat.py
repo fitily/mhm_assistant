@@ -103,3 +103,37 @@ def test_api_returns_action_only_for_admin(role, has_action):
     assert (body["action"] is not None) is has_action
     if has_action:
         assert body["action"]["dashboard"] == "visite" and body["mode"] == "DASHBOARD"
+
+
+def test_how_many_dashboards_is_answered_from_the_catalog_not_sql():
+    result = chat_service.answer("how many dashboard do you have there to show?", role="admin")
+    assert result.mode == "DASHBOARD" and result.action is None
+    assert "2 dashboard" in result.text
+    assert "AI-assistant-dashboard" in result.text and "HMH_Medical_Dashboard" in result.text
+
+
+def test_short_phrase_uses_the_conversation_history():
+    history = [("open the dashboard of medical", "Opening the “HMH_Medical_Dashboard” dashboard.")]
+    result = chat_service.answer("go back to the previous one", role="admin", history=history)
+    assert result.action == {"type": "previous_dashboard"}
+    result = chat_service.answer("close it", role="admin", history=history)
+    assert result.action == {"type": "close_dashboard"}
+
+
+def test_short_phrase_without_dashboard_context_goes_to_normal_routing():
+    with pytest.raises(AssertionError):  # le routage normal est appelé (boom du fixture)
+        chat_service.answer("go back to the previous one", role="admin", history=[("Hello", "Hi")])
+
+
+def test_who_are_you_has_a_fixed_correct_answer(isolated):
+    admin = chat_service.answer("Who are you?", role="admin")
+    assert admin.mode == "CHAT" and "iA'mbovo" in admin.text and "Boivo" not in admin.text
+    assert "dashboard" in admin.text.lower() and "numerical" in admin.text
+    doctor = chat_service.answer("Qui es-tu ?", role="doctor")
+    assert "iA'mbovo" in doctor.text and "documents" in doctor.text and "tableau" not in doctor.text.lower()
+    assert isolated["audit"][-1][3] == "identity"
+
+
+def test_what_can_you_do_lists_only_the_rights_of_the_role():
+    doctor = chat_service.answer("What can you do?", role="doctor")
+    assert "documents" in doctor.text and "dashboard" not in doctor.text.lower()

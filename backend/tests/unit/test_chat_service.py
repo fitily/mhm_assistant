@@ -130,20 +130,16 @@ def test_chat_translates_a_wrong_language_completion_to_current_message_language
 
 
 def test_english_identity_question_stays_english_end_to_end(monkeypatch):
-    replies = iter([
-        "Bonjour, je suis iA'mbovo, l'assistant IA de MHM Ambovo.",
-        "Hello, I'm iA'mbovo, the AI assistant at MHM Ambovo.",
-    ])
-    monkeypatch.setattr(
-        chat_service.ollama,
-        "complete",
-        lambda *args, **kwargs: next(replies),
-    )
+    """« who are you? » a une réponse fixe : le modèle local n'est plus appelé (il inventait « Boivo »)."""
+    def no_llm(*args, **kwargs):
+        raise AssertionError("le LLM ne doit pas être appelé pour une question d'identité")
+
+    monkeypatch.setattr(chat_service.ollama, "complete", no_llm)
     monkeypatch.setattr(chat_service, "audit", lambda *args: None)
 
     result = chat_service.answer("who are you?")
 
-    assert result.text.startswith("Hello, I'm iA'mbovo")
+    assert result.text.startswith("I'm iA'mbovo")
     assert "Bonjour" not in result.text
 
 

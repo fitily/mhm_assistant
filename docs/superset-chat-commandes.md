@@ -26,3 +26,14 @@ Règles :
 ```
 
 L'action ne contient jamais d'UUID ni d'URL : l'interface obtient l'accès par `/v1/superset/guest-token`.
+
+## Compléments (réponses sans IA)
+
+| Phrase | Réponse |
+|---|---|
+| « Combien de tableaux de bord avez-vous ? », « Quels dashboards ? », « List the dashboards » | Liste tirée du catalogue (`config/dashboards.yaml`), sans action. Ne passe jamais par le SQL. |
+| « Reviens au précédent », « the previous one », « ferme-le », « close it » | Comprises **seulement si le message précédent était une commande de dashboard** (sinon routage normal). |
+| « Qui es-tu ? », « Who are you? », « Que peux-tu faire ? » | Réponse fixe : nom `iA'mbovo` (config) + capacités selon le rôle (`domain/permissions.py`). Le modèle local n'est plus appelé. |
+
+Limite connue : une question chiffrée formulée de façon inattendue peut encore être traduite en SQL par le modèle ;
+pour la diagnostiquer, relever la ligne correspondante dans `logs/audit_log.jsonl`.

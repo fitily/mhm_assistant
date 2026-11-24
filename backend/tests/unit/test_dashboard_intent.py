@@ -104,3 +104,47 @@ def test_not_a_dashboard_command(question):
 def test_previous_month_is_not_previous_dashboard():
     command = detect("Show me the dashboard for last month", BOTH)
     assert command is None or not command.previous
+
+
+# --- liste du catalogue et phrases courtes après une commande -------------------------------------
+
+@pytest.mark.parametrize("question", [
+    "how many dashboard do you have there to show?",
+    "Combien de tableaux de bord avez-vous ?",
+    "What dashboards do you have?",
+    "Quels tableaux de bord sont disponibles ?",
+    "List the dashboards",
+    "Dashboards disponibles",
+])
+def test_catalog_questions_list_the_dashboards(question):
+    command = detect(question, BOTH)
+    assert command is not None and command.intent == "list_dashboards"
+    assert command.listing == tuple(BOTH)
+
+
+@pytest.mark.parametrize("question", [
+    "Combien de visites dans le dashboard ?",
+    "How many patients are in the dashboard?",
+    "What is a dashboard?",
+])
+def test_statistics_about_dashboard_content_are_not_listings(question):
+    assert detect(question, BOTH) is None
+
+
+@pytest.mark.parametrize("question,previous,intent", [
+    ("go back to the previous one", True, "switch_dashboard"),
+    ("Reviens au précédent", True, "switch_dashboard"),
+    ("the previous one", True, "switch_dashboard"),
+    ("close it", False, "close_dashboard"),
+    ("Ferme-le", False, "close_dashboard"),
+])
+def test_short_phrases_work_only_right_after_a_dashboard_command(question, previous, intent):
+    assert detect(question, BOTH) is None
+    command = detect(question, BOTH, after_dashboard=True)
+    assert command is not None and command.intent == intent and command.previous is previous
+
+
+def test_short_phrases_do_not_swallow_other_questions_after_a_dashboard():
+    assert detect("How many patients are there at MHM?", BOTH, after_dashboard=True) is None
+    assert detect("Go back to the previous quarter data for visits in the region of Analamanga", BOTH,
+                  after_dashboard=True) is None
