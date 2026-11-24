@@ -84,12 +84,18 @@ const visibleShortcuts = computed(() => shortcuts.filter((s) => s.roles.includes
 
     <section aria-labelledby="shortcuts-title">
       <h2 id="shortcuts-title" class="section-title">Get started</h2>
-      <div class="grid">
-        <button v-for="s in visibleShortcuts" :key="s.title" class="tile" type="button" @click="chat.ask(s.question)">
-          <span class="tile-icon"><AppIcon :name="s.icon" :size="22" /></span>
-          <strong>{{ s.title }}</strong>
-          <span class="tile-text">{{ s.text }}</span>
-          <span class="tile-q">« {{ s.question }} »</span>
+      <div class="grid shortcuts">
+        <button v-for="s in visibleShortcuts" :key="s.title" class="shortcut" type="button" @click="chat.ask(s.question)">
+          <span class="shortcut-head">
+            <span class="shortcut-icon"><AppIcon :name="s.icon" :size="22" /></span>
+            <span class="shortcut-go" aria-hidden="true"><AppIcon name="arrow" :size="18" /></span>
+          </span>
+          <strong class="shortcut-title">{{ s.title }}</strong>
+          <span class="shortcut-text">{{ s.text }}</span>
+          <span class="shortcut-q">
+            <AppIcon name="chat" :size="14" />
+            <span>« {{ s.question }} »</span>
+          </span>
         </button>
       </div>
     </section>
@@ -177,24 +183,6 @@ const visibleShortcuts = computed(() => shortcuts.filter((s) => s.roles.includes
   color: var(--mhm-slate-dark);
 }
 
-.tile {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 20px;
-  text-align: left;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-  box-shadow: var(--shadow-sm);
-  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
-}
-.tile:hover {
-  border-color: var(--mhm-blue);
-  box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
-}
 .tile-icon {
   flex: none;
   width: 44px;
@@ -205,19 +193,147 @@ const visibleShortcuts = computed(() => shortcuts.filter((s) => s.roles.includes
   background: var(--mhm-blue-50);
   color: var(--mhm-blue);
 }
-.tile strong {
-  font-size: 1.02rem;
+
+/* ---- « Get started » : cartes de questions rapides ---- */
+.grid.shortcuts {
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 18px;
+}
+.shortcut {
+  /* couleur d'accent propre à chaque carte (décorative) */
+  --accent: var(--mhm-blue);
+  --accent-bg: var(--mhm-blue-50);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  min-height: 210px;
+  padding: 22px;
+  overflow: hidden;
+  text-align: left;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(120% 90% at 100% 0%, var(--accent-bg) 0%, transparent 55%),
+    var(--surface);
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+.shortcut:nth-child(3n + 2) {
+  --accent: var(--success);
+  --accent-bg: var(--success-bg);
+}
+.shortcut:nth-child(3n + 3) {
+  --accent: var(--mhm-slate);
+  --accent-bg: #e7eef3;
+}
+/* filet d'accent en bas, qui se déploie au survol */
+.shortcut::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s ease;
+}
+.shortcut:hover,
+.shortcut:focus-visible {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-3px);
+}
+.shortcut:hover::after,
+.shortcut:focus-visible::after {
+  transform: scaleX(1);
+}
+.shortcut:focus-visible {
+  outline: 3px solid var(--mhm-blue-100);
+  outline-offset: 2px;
+}
+.shortcut:active {
+  transform: translateY(-1px) scale(0.99);
+}
+
+.shortcut-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.shortcut-icon {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 70%, #000));
+  box-shadow: 0 6px 14px color-mix(in srgb, var(--accent) 35%, transparent);
+  transition: transform 0.25s;
+}
+.shortcut:hover .shortcut-icon {
+  transform: rotate(-6deg) scale(1.06);
+}
+.shortcut-go {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--accent);
+  background: var(--accent-bg);
+  opacity: 0.7;
+  transition: transform 0.25s, opacity 0.25s, background 0.25s, color 0.25s;
+}
+.shortcut:hover .shortcut-go,
+.shortcut:focus-visible .shortcut-go {
+  opacity: 1;
+  color: #fff;
+  background: var(--accent);
+  transform: translateX(3px);
+}
+
+.shortcut-title {
+  margin-top: 6px;
+  font-size: 1.08rem;
+  line-height: 1.3;
   color: var(--mhm-slate-dark);
 }
-.tile-text {
+.shortcut-text {
   color: var(--muted);
-  font-size: 0.93rem;
+  font-size: 0.92rem;
+  line-height: 1.5;
 }
-.tile-q {
+/* la question qui sera envoyée, présentée comme une bulle de chat */
+.shortcut-q {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
   margin-top: auto;
-  font-size: 0.85rem;
+  padding: 10px 12px;
+  border-radius: 12px 12px 12px 4px;
+  background: var(--surface-2);
+  border: 1px dashed var(--border);
+  font-size: 0.84rem;
   font-style: italic;
-  color: var(--mhm-blue-dark);
+  line-height: 1.4;
+  color: var(--mhm-slate-dark);
+  transition: background 0.2s, border-color 0.2s;
+}
+.shortcut-q svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--accent);
+}
+.shortcut:hover .shortcut-q {
+  background: #fff;
+  border-color: var(--accent);
+  border-style: solid;
 }
 
 @media (max-width: 900px) {
@@ -225,9 +341,36 @@ const visibleShortcuts = computed(() => shortcuts.filter((s) => s.roles.includes
     grid-template-columns: minmax(0, 1fr);
   }
 }
+@media (max-width: 900px) {
+  .grid.shortcuts {
+    grid-template-columns: repeat(2, minmax(0, 1fr)); /* tablette : 2 colonnes */
+  }
+}
 @media (max-width: 520px) {
   .welcome {
     padding: 22px 18px;
+  }
+  .grid.shortcuts {
+    grid-template-columns: minmax(0, 1fr); /* mobile : 1 colonne, cartes plus compactes */
+    gap: 12px;
+  }
+  .shortcut {
+    min-height: 0;
+    padding: 18px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shortcut,
+  .shortcut::after,
+  .shortcut-icon,
+  .shortcut-go {
+    transition: none;
+  }
+  .shortcut:hover,
+  .shortcut:focus-visible,
+  .shortcut:hover .shortcut-icon,
+  .shortcut:hover .shortcut-go {
+    transform: none;
   }
 }
 </style>
