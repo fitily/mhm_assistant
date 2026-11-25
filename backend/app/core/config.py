@@ -78,10 +78,18 @@ class Settings:
     kpis_path: Path
 
 
+def _ollama_host() -> str:
+    """Adresse d'Ollama. Si OLLAMA_HOST contient autre chose qu'une URL (clé Gemini placée là temporairement),
+    on garde l'adresse locale par défaut : les embeddings BGE-M3 passent toujours par Ollama."""
+    default = "http://localhost:11434"
+    value = os.getenv("OLLAMA_HOST", default).strip()
+    return value.rstrip("/") if value.startswith(("http://", "https://")) else default
+
+
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     return Settings(
-        ollama_host=os.getenv("OLLAMA_HOST", "http://localhost:11434"),
+        ollama_host=_ollama_host(),
         llm_model=os.getenv("LLM_MODEL", "llama3.2"),
         embed_model=os.getenv("EMBED_MODEL", "bge-m3"),
         num_ctx=int(os.getenv("NUM_CTX", "4096")),

@@ -8,6 +8,7 @@ from collections.abc import Callable
 import httpx
 
 from app.core.config import debug_trace, get_settings
+from app.infrastructure.llm import gemini  # test temporaire : si Gemini est activé dans .env, complete/stream lui sont confiés
 
 OLLAMA_TIMEOUT = httpx.Timeout(connect=10, read=180, write=10, pool=10)
 
@@ -36,6 +37,8 @@ def _payload(prompt: str, predict: int, stream: bool, temperature: float = 0.0,
 def complete(prompt: str, predict: int = 300, temperature: float = 0.0,
              response_format: str | None = None, *, stage: str = "génération",
              num_ctx: int | None = None) -> str:
+    if gemini.is_enabled():
+        return gemini.complete(prompt, predict, temperature, response_format, stage=stage, num_ctx=num_ctx)
     started = time.perf_counter()
     try:
         r = httpx.post(
@@ -64,6 +67,8 @@ def complete(prompt: str, predict: int = 300, temperature: float = 0.0,
 def stream(prompt: str, predict: int = 300, emit: Callable[[str], None] | None = None, *,
            stage: str = "génération", num_ctx: int | None = None) -> str:
     """Génère en flux ; `emit(morceau)` est appelé à chaque morceau (affichage en direct)."""
+    if gemini.is_enabled():
+        return gemini.stream(prompt, predict, emit, stage=stage, num_ctx=num_ctx)
     chunks: list[str] = []
     url = f"{get_settings().ollama_host}/api/generate"
     started = time.perf_counter()

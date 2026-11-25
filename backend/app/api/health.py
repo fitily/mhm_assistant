@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 from app.infrastructure.db import analytics, vectors
-from app.infrastructure.llm import ollama
+from app.infrastructure.llm import gemini, ollama
 
 router = APIRouter(tags=["health"])
 
@@ -22,7 +22,8 @@ def _db_ok(engine_factory) -> bool:
 
 @router.get("/health")
 def health() -> dict:
-    return {"status": "ok"}
+    # « llm » : fournisseur de texte actif (utile pendant le test Gemini ; le nom du modèle n'est pas un secret)
+    return {"status": "ok", "llm": f"gemini:{gemini.model_name()}" if gemini.is_enabled() else "ollama"}
 
 
 @router.get("/health/ready")
