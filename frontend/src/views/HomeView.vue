@@ -49,6 +49,13 @@ const shortcuts = [
     roles: ['admin', 'doctor'],
     icon: 'help',
   },
+  {
+    title: "Want to use iA'mbovo?",
+    text: 'Follow a short step-by-step guide: ask questions, check the sources and get the most out of the assistant.',
+    question: 'How do I use you?',
+    roles: ['admin', 'doctor'],
+    icon: 'guidance',
+  },
 ]
 
 // Chaque profil ne voit que ce qui lui est utile (le backend vérifie aussi les droits).

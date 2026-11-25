@@ -40,3 +40,4 @@ pour la diagnostiquer, relever la ligne correspondante dans `logs/audit_log.json
 
 | « Génère / crée un dashboard… », « generate a dashboard… » | Réponse honnête : création impossible, liste des dashboards existants. Le modèle n'invente plus de dashboard. |
 | « oui », « yes please », « ok » seuls | « Je n'ai rien en attente de confirmation… » : plus jamais réécrits en une ancienne question puis lancés en SQL. |
+| « How do I use you? », « how to use you », « Comment t'utiliser ? », « mode d'emploi », « user guide » | Guide pas à pas fixe (sans IA), adapté au rôle : l'admin voit données + dashboards, le médecin voit documents + sources (+ rappel qu'iA'mbovo ne remplace pas le jugement clinique). fr / en / mg. |

@@ -78,7 +78,7 @@ _NO_ACCESS = re.compile(
 _FR_WORDS = {"qui", "es", "tu", "est", "quoi", "êtes", "vous", "comment", "combien", "les",
              "des", "une", "je", "bonjour", "quel", "quelle", "pourquoi", "peux", "c'est",
              "parles", "parlez", "merci", "salut", "et", "pour", "de", "du", "en", "chez",
-             "le", "la", "dans", "sur", "avec", "oui", "fournir"}
+             "le", "la", "dans", "sur", "avec", "oui", "fournir", "utiliser", "t'utiliser", "d'emploi"}
 _EN_WORDS = {"who", "are", "you", "what", "is", "how", "many", "the", "your", "can",
              "hello", "why", "do", "does", "thanks", "speak", "and", "about", "women", "men",
              "in", "have", "any", "clue", "stand", "stands", "for", "from", "with", "health",
@@ -143,7 +143,7 @@ def detect_lang(text: str) -> str:
     unique_signals = {
         "fr": {"bonjour", "merci", "salut", "bonsoir", "oui", "êtes", "c'est", "ça",
                "d'accord", "le", "la", "les", "des", "une", "un", "du", "je", "tu",
-               "vous", "quel", "quelle"},
+               "vous", "quel", "quelle", "utiliser", "t'utiliser", "emploi", "d'emploi", "utilisation"},
         "en": {"hello", "hey", "thanks", "please", "who", "what"},
         "mg": {"salama", "misaotra", "ahoana", "ianao", "azafady", "eny", "tsy",
                "ny", "ve", "ary"},

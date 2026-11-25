@@ -155,3 +155,31 @@ def test_bare_confirmation_never_reaches_sql(text, isolated):
     result = chat_service.answer(text, role="admin", history=history)
     assert result.mode == "CHAT" and result.sql is None
     assert isolated["audit"][-1][3] == "bare_confirmation"
+
+
+@pytest.mark.parametrize("question", [
+    "how to use you", "How do I use you?", "How can I use iA'mbovo?", "Comment t'utiliser ?",
+    "Comment utiliser iA'mbovo ?", "Comment je peux vous utiliser", "mode d'emploi", "User guide",
+])
+def test_usage_guide_is_fixed_and_follows_the_role(question, isolated):
+    admin = chat_service.answer(question, role="admin")
+    assert admin.mode == "CHAT" and isolated["audit"][-1][3] == "usage_guide"
+    assert "1." in admin.text and "dashboard" in admin.text.lower() or "tableau" in admin.text.lower()
+    assert "sources" not in admin.text.lower() or "Check the sources" not in admin.text
+    doctor = chat_service.answer(question, role="doctor")
+    assert "source" in doctor.text.lower() and "dashboard" not in doctor.text.lower() \
+        and "tableau" not in doctor.text.lower()
+    assert "clinical" in doctor.text or "clinique" in doctor.text
+
+
+def test_usage_guide_language_and_numbering():
+    fr = chat_service.answer("Comment t'utiliser ?", role="admin").text
+    assert fr.startswith("Voici un petit guide") and "\n1. " in fr and "\n3. " in fr
+    en = chat_service.answer("how to use you", role="doctor").text
+    assert en.startswith("Here is a quick step-by-step guide") and "\n1. " in en and "\n3. " in en
+
+
+@pytest.mark.parametrize("question", ["How to use SQL joins?", "Comment utiliser un garrot ?", "What are the symptoms of HIV?"])
+def test_usage_guide_does_not_hijack_other_questions(question):
+    with pytest.raises(AssertionError):
+        chat_service.answer(question, role="doctor")
