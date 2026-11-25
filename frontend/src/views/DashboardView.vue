@@ -1,7 +1,7 @@
 <script setup>
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
-import BrandLogo from '@/components/BrandLogo.vue'
+import AppTopbar from '@/components/layout/AppTopbar.vue'
 
 const auth = useAuthStore()
 const chat = useChatStore()
@@ -30,18 +30,7 @@ const shortcuts = [
 
 <template>
   <div class="shell">
-    <header class="topbar">
-      <div class="topbar-inner">
-        <BrandLogo :size="36" />
-        <div class="user">
-          <span class="avatar" aria-hidden="true">{{ auth.displayName.charAt(0).toUpperCase() }}</span>
-          <span class="name">{{ auth.displayName }}</span>
-          <button class="btn btn-ghost logout" type="button" @click="auth.logout()">
-            Se déconnecter
-          </button>
-        </div>
-      </div>
-    </header>
+    <AppTopbar />
 
     <main class="content">
       <section class="welcome">
@@ -77,51 +66,6 @@ const shortcuts = [
 </template>
 
 <style scoped>
-.topbar {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-}
-.topbar-inner {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 10px 20px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.user {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-.avatar {
-  flex: none;
-  width: 34px;
-  height: 34px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--mhm-slate);
-  color: #fff;
-  font-weight: 700;
-}
-.name {
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-weight: 600;
-  color: var(--mhm-slate);
-}
-.logout {
-  padding: 8px 14px;
-}
-
 .content {
   max-width: 1100px;
   margin: 0 auto;
@@ -208,9 +152,6 @@ const shortcuts = [
   }
 }
 @media (max-width: 520px) {
-  .name {
-    display: none;
-  }
   .content {
     padding-top: 18px;
   }

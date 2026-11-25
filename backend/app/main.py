@@ -4,7 +4,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import chat, health
+from app.api import chat, feeds, health
 from app.core.config import ASSISTANT_NAME, get_settings
 
 
@@ -16,6 +16,7 @@ def create_app() -> FastAPI:
                            allow_headers=["Authorization", "Content-Type"])
     app.include_router(health.router)
     app.include_router(chat.router)
+    app.include_router(feeds.router)
     return app
 
 

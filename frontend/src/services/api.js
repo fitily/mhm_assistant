@@ -5,17 +5,20 @@ import * as mock from './mock'
 // et transmet au backend FastAPI (ex. /api/v1/chat -> http://localhost:8000/v1/chat).
 const BASE = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, '')
 
-// Deux interrupteurs indépendants :
+// Trois interrupteurs indépendants :
 //  - VITE_MOCK_AUTH=true : fausse connexion (en attendant l'authentification Laravel)
 //  - VITE_MOCK_CHAT=true : fausses réponses du chat (sans backend)
 const MOCK_AUTH = import.meta.env.VITE_MOCK_AUTH === 'true'
 const MOCK_CHAT = import.meta.env.VITE_MOCK_CHAT === 'true'
+//  - VITE_MOCK_FEEDS=true : fausses actualités et publications (sans backend)
+const MOCK_FEEDS = import.meta.env.VITE_MOCK_FEEDS === 'true'
 
 // Route de connexion réelle (Laravel) : chemin relatif à BASE, ou URL complète.
 const LOGIN_URL = import.meta.env.VITE_LOGIN_URL || '/auth/login'
 
 export const isMockAuth = MOCK_AUTH
 export const isMockChat = MOCK_CHAT
+export const isMockFeeds = MOCK_FEEDS
 
 function defaultMessage(status) {
   if (status === 401) return 'Session expirée ou identifiants invalides.'
@@ -102,5 +105,39 @@ export async function clearSession({ sessionId, token }) {
     await request('/v1/clear', { method: 'POST', token, body: { session_id: sessionId } })
   } catch {
     /* ce n'est pas bloquant */
+  }
+}
+
+/**
+ * GET /v1/feeds/breaking-news | /v1/feeds/research
+ * Réponse : { items[{id,title,summary,url,published_at,source_id,source_name,tag}],
+ *             sources[{id,name,status,via,fetched_at,count}], generated_at }
+ * `refresh` demande au serveur de recharger les sources (limité côté serveur).
+ */
+export async function getFeed(kind, { token, refresh = false } = {}) {
+  const data = MOCK_FEEDS
+    ? await mock.getFeed(kind)
+    : await request(`/v1/feeds/${kind}${refresh ? '?refresh=true' : ''}`, { token })
+
+  return {
+    items: (data?.items || []).map((item) => ({
+      id: item.id,
+      title: item.title,
+      summary: item.summary || '',
+      url: item.url,
+      publishedAt: item.published_at || null,
+      sourceId: item.source_id,
+      sourceName: item.source_name,
+      tag: item.tag || null,
+    })),
+    sources: (data?.sources || []).map((source) => ({
+      id: source.id,
+      name: source.name,
+      status: source.status,
+      via: source.via || null,
+      fetchedAt: source.fetched_at || null,
+      count: source.count || 0,
+    })),
+    generatedAt: data?.generated_at || null,
   }
 }

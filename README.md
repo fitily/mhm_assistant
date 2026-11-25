@@ -51,12 +51,20 @@ curl -X POST localhost:8000/v1/clear -H "Content-Type: application/json" -d '{}'
 En production : `AUTH_DISABLED=0`, `JWT_SECRET` identique à celui de Laravel, et l'en-tête
 `Authorization: Bearer <jeton>` envoyé par Laravel.
 
+## Veille sanitaire (page d'accueil Médecin)
+`GET /v1/feeds/breaking-news` (OMS, OMS Afrique) et `GET /v1/feeds/research` (The Lancet, NEJM) renvoient
+les derniers articles : `items`, état de chaque source (`ok`, `stale` = derniers articles connus, `error`)
+et `generated_at`. Le serveur télécharge les flux RSS (jamais de donnée patient envoyée), les nettoie
+(XML sécurisé, HTML retiré, liens http(s) seulement) et les garde en cache `FEED_CACHE_TTL_S` secondes.
+Si le flux d'une revue est bloqué, PubMed sert de secours (liens DOI vers le site de la revue).
+Les adresses des flux se changent dans `.env` (`FEED_URLS_WHO`, `_AFRO`, `_LANCET`, `_NEJM`), sans toucher au code.
+
 ## Organisation
 | Dossier | Rôle |
 |---|---|
 | `config/` | dictionnaire de données, définitions métier, prompts |
 | `data/analytics/views/` | SQL des vues (source de vérité) |
-| `backend/app/domain/` | logique : routeur, exemples text-to-SQL, validation SQL, recherche documentaire |
+| `backend/app/domain/` | logique : routeur, exemples text-to-SQL, validation SQL, recherche documentaire, lecture des flux (`feeds/`) |
 | `backend/app/infrastructure/` | accès PostgreSQL et Ollama |
 | `backend/app/services/` | orchestration (`chat_service.py`) |
 | `backend/app/api/` | routes FastAPI |

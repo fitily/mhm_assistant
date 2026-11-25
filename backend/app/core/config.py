@@ -64,6 +64,9 @@ class Settings:
     jwt_secret: str
     jwt_algorithm: str
     cors_origins: list[str]
+    feed_cache_ttl_s: int
+    feed_timeout_s: float
+    feed_max_items_per_source: int
 
 
 @lru_cache(maxsize=1)
@@ -95,6 +98,9 @@ def get_settings() -> Settings:
         jwt_secret=os.getenv("JWT_SECRET", ""),
         jwt_algorithm=os.getenv("JWT_ALGORITHM", "HS256"),
         cors_origins=[o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()],
+        feed_cache_ttl_s=int(os.getenv("FEED_CACHE_TTL_S", "1800")),
+        feed_timeout_s=float(os.getenv("FEED_TIMEOUT_S", "8")),
+        feed_max_items_per_source=int(os.getenv("FEED_MAX_ITEMS_PER_SOURCE", "15")),
     )
 
 

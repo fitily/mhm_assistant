@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import * as api from '@/services/api'
+import { extractRole, ROLE_LABELS } from '@/utils/roles'
 
 const KEY = 'mhm_auth'
 
@@ -19,6 +20,11 @@ export const useAuthStore = defineStore('auth', {
   getters: {
     isAuthenticated: (state) => !!state.token,
     displayName: (state) => state.user?.name || state.user?.email || 'Utilisateur',
+    /** Identifiant normalisé du rôle (« doctor »…) ou null si l'utilisateur n'en a pas. */
+    role: (state) => extractRole(state.user),
+    roleLabel() {
+      return ROLE_LABELS[this.role] || ''
+    },
   },
   actions: {
     async login(username, password) {

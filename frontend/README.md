@@ -116,3 +116,30 @@ frontend/
 - Historique conservé pendant la session du navigateur (même après rechargement de la page).
 - Entrée envoie le message, Maj+Entrée ajoute un retour à la ligne. Échap repasse du plein écran à la bulle, puis réduit la fenêtre.
 - Mobile (≤ 640 px) : la fenêtre passe en plein écran.
+
+## 7. Page d'accueil par rôle
+
+`/` affiche `HomeView.vue`, qui choisit la page selon le rôle de l'utilisateur (champ `role` ou `roles`
+renvoyé par Laravel à la connexion ; « medecin », « Médecin » et « doctor » sont équivalents).
+
+| Rôle | Page |
+|---|---|
+| Médecin | `views/DoctorHomeView.vue` : **Breaking News** (OMS, OMS Afrique) et **Scientific Research** (The Lancet, NEJM) |
+| Autres / sans rôle | `views/DashboardView.vue` (accueil standard) |
+
+Ajouter un rôle : créer sa vue, l'enregistrer dans `HomeView.vue`, puis dans `ALIASES` et `ROLE_LABELS` (`utils/roles.js`).
+
+La page Médecin appelle `GET /api/v1/feeds/breaking-news` et `/research` (voir `services/api.js`, `stores/feeds.js`).
+Chaque source garde son état : si l'une tombe, un bandeau le dit et les autres restent affichées.
+
+Sans backend : `VITE_MOCK_FEEDS=true` affiche des articles fictifs. Pour essayer un autre rôle avec la connexion
+fictive : `VITE_MOCK_ROLE=infirmier`.
+
+```
+src/
+├── components/feeds/   # FeedSection (en-tête, filtres, états), BreakingNewsSection, ResearchSection, FeedMeta
+├── components/layout/  # AppTopbar (barre commune aux accueils)
+├── stores/feeds.js     # chargement, cache de 5 min, actualisation
+├── utils/              # roles.js, dates.js
+└── views/              # HomeView (aiguillage), DoctorHomeView
+```
