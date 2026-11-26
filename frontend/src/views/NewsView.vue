@@ -1,8 +1,9 @@
 <script setup>
-// Espace « Medical news » du médecin :
-//  - les données viennent de services/news.js via /v1/news
+// Espace « Medical news » du médecin : les actualités PUBLIÉES pendant les 7 derniers jours (période dynamique).
+//  - les données viennent de services/news.js via /v1/news ; le backend filtre d'après la date de publication
+//  - affichage sobre : liste groupée par jour, 8 articles à la fois (« Show more »)
 //  - états gérés : chargement, erreur, disponibilité partielle, aucun résultat, liste
-//  - filtres (catégorie + recherche) déjà reliés ; la recherche est « débouncée »
+//  - filtres (catégorie + recherche) ; la recherche est « débouncée »
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import AppShell from '@/components/layout/AppShell.vue'
@@ -13,17 +14,20 @@ import SkeletonBlock from '@/components/ui/SkeletonBlock.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import NewsCard from '@/components/news/NewsCard.vue'
 import NewsFilters from '@/components/news/NewsFilters.vue'
-import BreakingBanner from '@/components/news/BreakingBanner.vue'
 import { fetchNews, NEWS_CATEGORIES } from '@/services/news'
-import { timeAgo } from '@/utils/format'
+import { dayGroupKey, dayLabel, shortDate, timeAgo } from '@/utils/format'
+
+const PAGE_SIZE = 8
 
 const category = ref('all')
 const query = ref('')
 const auth = useAuthStore()
 const items = ref([])
-const connected = ref(false)
 const sources = ref([])
 const updatedAt = ref(null)
+const windowDays = ref(7)
+const since = ref(null)
+const shown = ref(PAGE_SIZE)
 const state = ref('loading') // loading | error | ready
 
 let timer = null
@@ -32,13 +36,15 @@ let requestId = 0 // ignore les réponses obsolètes si l'utilisateur change vit
 async function load() {
   const id = ++requestId
   state.value = 'loading'
+  shown.value = PAGE_SIZE
   try {
     const res = await fetchNews({ category: category.value, query: query.value, token: auth.token })
     if (id !== requestId) return
     items.value = res.items
-    connected.value = res.connected
     sources.value = res.sources
     updatedAt.value = res.updatedAt
+    windowDays.value = res.windowDays
+    since.value = res.since
     state.value = 'ready'
   } catch (error) {
     if (id === requestId) {
@@ -48,9 +54,28 @@ async function load() {
   }
 }
 
-const breaking = computed(() => items.value.find((a) => a.category === 'breaking') || null)
 const hasFilters = computed(() => category.value !== 'all' || query.value.trim() !== '')
-const lastUpdate = computed(() => (updatedAt.value ? `Updated ${timeAgo(updatedAt.value)}` : 'Not updated yet'))
+const lastUpdate = computed(() => (updatedAt.value ? `Updated ${timeAgo(updatedAt.value)}` : ''))
+const period = computed(() =>
+  since.value
+    ? `Published in the last ${windowDays.value} days · ${shortDate(since.value)} – today`
+    : `Published in the last ${windowDays.value} days`,
+)
+const online = computed(() => sources.value.filter((source) => source.connected).length)
+
+// Les articles arrivent triés du plus récent au plus ancien : on regroupe les voisins qui ont le même jour.
+const visible = computed(() => items.value.slice(0, shown.value))
+const remaining = computed(() => Math.max(0, items.value.length - shown.value))
+const groups = computed(() => {
+  const out = []
+  for (const article of visible.value) {
+    const key = dayGroupKey(article.published_at)
+    const last = out[out.length - 1]
+    if (last && last.key === key) last.articles.push(article)
+    else out.push({ key, label: dayLabel(article.published_at), iso: article.published_at, articles: [article] })
+  }
+  return out
+})
 
 watch(category, load)
 watch(query, () => {
@@ -68,199 +93,186 @@ onBeforeUnmount(() => clearTimeout(timer))
 
 <template>
   <AppShell>
-    <PageHeader
-      eyebrow="Clinical watch"
-      title="Medical news"
-      subtitle="Latest medical news, research publications and updates for healthcare professionals."
-    >
-      <template #actions>
-        <span class="updated">{{ lastUpdate }}</span>
-        <button class="btn btn-ghost" type="button" :disabled="state === 'loading'" @click="load">
-          <AppIcon name="refresh" :size="18" />Refresh
-        </button>
-      </template>
-    </PageHeader>
+    <div class="page">
+      <PageHeader eyebrow="Clinical watch" title="Medical news" :subtitle="period">
+        <template #actions>
+          <span v-if="lastUpdate" class="updated">{{ lastUpdate }}</span>
+          <button class="btn btn-ghost" type="button" :disabled="state === 'loading'" @click="load">
+            <AppIcon name="refresh" :size="18" />Refresh
+          </button>
+        </template>
+      </PageHeader>
 
-    <BreakingBanner v-if="state === 'ready' && breaking" :article="breaking" />
+      <NewsFilters v-model:category="category" v-model:query="query" :categories="NEWS_CATEGORIES" />
 
-    <div class="layout">
-      <div class="feed">
-        <NewsFilters v-model:category="category" v-model:query="query" :categories="NEWS_CATEGORIES" />
-
-        <div v-if="state === 'loading'" class="grid" aria-busy="true">
-          <div v-for="n in 4" :key="n" class="ghost">
-            <SkeletonBlock width="30%" height="18px" radius="999px" />
-            <SkeletonBlock height="20px" />
-            <SkeletonBlock width="80%" height="20px" />
-            <SkeletonBlock height="14px" />
-            <SkeletonBlock width="60%" height="14px" />
-          </div>
-        </div>
-
-        <SectionCard v-else-if="state === 'error'">
-          <EmptyState icon="alert" tone="danger" title="The news could not be loaded" text="Check your connection and try again.">
-            <button class="btn" type="button" @click="load">Try again</button>
-          </EmptyState>
-        </SectionCard>
-
-        <SectionCard v-else-if="!items.length">
-          <EmptyState
-            v-if="hasFilters"
-            icon="search"
-            title="No article matches your search"
-            text="Try another keyword or choose a different category."
-          >
-            <button class="btn btn-ghost" type="button" @click="resetFilters">Clear filters</button>
-          </EmptyState>
-          <EmptyState
-            v-else
-            icon="news"
-            title="No medical news is available"
-            text="The latest health updates and research publications will appear here when available."
-          />
-        </SectionCard>
-
-        <div v-else class="grid">
-          <NewsCard v-for="a in items" :key="a.id" :article="a" />
+      <div v-if="state === 'loading'" class="skeletons" aria-busy="true">
+        <div v-for="n in 4" :key="n" class="ghost">
+          <SkeletonBlock width="25%" height="12px" radius="999px" />
+          <SkeletonBlock height="18px" />
+          <SkeletonBlock width="70%" height="14px" />
         </div>
       </div>
 
-      <aside class="side">
-        <SectionCard title="Feed status">
-          <p class="status" :class="{ on: connected, partial: !connected && sources.some((source) => source.connected) }">
-            <i aria-hidden="true" />{{
-              connected
-                ? 'All sources connected'
-                : sources.some((source) => source.connected)
-                  ? `${sources.filter((source) => source.connected).length} of ${sources.length} sources connected`
-                  : 'Sources unavailable'
-            }}
-          </p>
-          <p class="note">News sources</p>
-          <ul class="planned">
-            <li v-for="source in sources" :key="source.key">
-              <span class="source-dot" :class="{ online: source.connected }" aria-hidden="true" />
-              <a :href="source.url" target="_blank" rel="noopener noreferrer">{{ source.label }}</a>
-              <span class="source-label">{{ source.connected ? 'Live' : 'Unavailable' }}</span>
-            </li>
-          </ul>
-        </SectionCard>
-      </aside>
+      <SectionCard v-else-if="state === 'error'">
+        <EmptyState icon="alert" tone="danger" title="The news could not be loaded" text="Check your connection and try again.">
+          <button class="btn" type="button" @click="load">Try again</button>
+        </EmptyState>
+      </SectionCard>
+
+      <SectionCard v-else-if="!items.length">
+        <EmptyState
+          v-if="hasFilters"
+          icon="search"
+          title="No article matches your search"
+          :text="`Nothing published in the last ${windowDays} days matches. Try another keyword or category.`"
+        >
+          <button class="btn btn-ghost" type="button" @click="resetFilters">Clear filters</button>
+        </EmptyState>
+        <EmptyState
+          v-else
+          icon="news"
+          :title="`No medical news in the last ${windowDays} days`"
+          text="New articles from WHO and leading journals will appear here as soon as they are published."
+        />
+      </SectionCard>
+
+      <div v-else class="feed">
+        <section v-for="group in groups" :key="group.key" class="day">
+          <h2 class="day-label"><time :datetime="group.iso">{{ group.label }}</time></h2>
+          <div class="list">
+            <NewsCard v-for="article in group.articles" :key="article.id" :article="article" />
+          </div>
+        </section>
+        <button v-if="remaining" class="btn btn-ghost more" type="button" @click="shown += PAGE_SIZE">
+          Show more ({{ remaining }})
+        </button>
+      </div>
+
+      <footer v-if="state === 'ready' && sources.length" class="sources" aria-label="News sources">
+        <span class="sources-title">Sources</span>
+        <ul>
+          <li v-for="source in sources" :key="source.key" :class="{ off: !source.connected }">
+            <i class="dot" :class="{ online: source.connected }" aria-hidden="true" />
+            <a :href="source.url" target="_blank" rel="noopener noreferrer">{{ source.label }}</a>
+            <span v-if="!source.connected" class="off-label">unavailable</span>
+          </li>
+        </ul>
+        <span v-if="online < sources.length" class="sources-note">{{ online }} of {{ sources.length }} connected</span>
+      </footer>
     </div>
   </AppShell>
 </template>
 
 <style scoped>
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 860px;
+  margin: 0 auto;
+}
 .updated {
   font-size: 0.85rem;
   color: var(--muted);
 }
-.layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
-  gap: 22px;
-  align-items: start;
-}
 .feed {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  min-width: 0;
+  gap: 22px;
 }
-.grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+.day-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mhm-slate);
+}
+.day-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.more {
+  align-self: center;
+}
+.skeletons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 .ghost {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 18px;
+  gap: 10px;
+  padding: 16px 20px;
+  border-radius: 12px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
 }
-.side {
-  position: sticky;
-  top: 24px;
-}
-.status {
+.sources {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 0 0 14px;
-  font-weight: 600;
-  color: var(--warning);
-}
-.status i {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: currentColor;
-}
-.status.on {
-  color: var(--success);
-}
-.status.partial {
-  color: var(--warning);
-}
-.note {
-  margin: 0 0 8px;
-  font-size: 0.78rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  font-size: 0.8rem;
   color: var(--muted);
 }
-.planned {
-  list-style: none;
+.sources-title {
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.sources ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
   margin: 0;
   padding: 0;
-  display: grid;
-  gap: 10px;
+  list-style: none;
 }
-.planned li {
+.sources li {
   display: flex;
   align-items: center;
-  gap: 10px;
-  color: var(--mhm-slate);
+  gap: 6px;
 }
-.planned li a {
-  min-width: 0;
-  color: inherit;
+.sources a {
+  color: var(--mhm-slate);
   text-decoration: none;
 }
-.planned li a:hover {
+.sources a:hover {
   color: var(--mhm-blue-dark);
   text-decoration: underline;
 }
-.planned .source-label {
-  margin-left: auto;
+.sources .off a {
   color: var(--muted);
-  font-size: 0.76rem;
 }
-.source-dot {
-  flex: none;
-  width: 8px;
-  height: 8px;
+.dot {
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: var(--warning);
 }
-.source-dot.online {
+.dot.online {
   background: var(--success);
 }
-@media (max-width: 1050px) {
-  .layout {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .side {
-    position: static;
-  }
+.sources-note {
+  margin-left: auto;
 }
 @media (max-width: 640px) {
-  .grid {
-    grid-template-columns: minmax(0, 1fr);
+  .sources-note {
+    margin-left: 0;
   }
 }
 </style>

@@ -30,7 +30,8 @@ const SAMPLE = [
 
 /**
  * @param {{category?: string, query?: string}} filters
- * @returns {Promise<{items: Array, updatedAt: string|null, connected: boolean}>}
+ * @returns {Promise<{items: Array, updatedAt: string|null, connected: boolean, sources: Array, windowDays: number, since: string|null}>}
+ *   `windowDays` / `since` : période affichée (les N derniers jours), calculée par le backend d'après la date de PUBLICATION.
  */
 export async function fetchNews({ category = 'all', query = '', token } = {}) {
   if (!PREVIEW) {
@@ -40,6 +41,8 @@ export async function fetchNews({ category = 'all', query = '', token } = {}) {
       updatedAt: data.updated_at || null,
       connected: Boolean(data.connected),
       sources: data.sources || [],
+      windowDays: data.window_days || 7,
+      since: data.since || null,
     }
   }
 
@@ -47,5 +50,8 @@ export async function fetchNews({ category = 'all', query = '', token } = {}) {
   const items = SAMPLE.map(({ hours, ...a }) => ({ ...a, url: null, published_at: ago(hours) })).filter(
     (a) => (category === 'all' || a.category === category) && (!q || `${a.title} ${a.summary}`.toLowerCase().includes(q)),
   )
-  return { items, updatedAt: new Date().toISOString(), connected: false, sources: PREVIEW_SOURCES }
+  const since = new Date()
+  since.setHours(0, 0, 0, 0)
+  since.setDate(since.getDate() - 7)
+  return { items, updatedAt: new Date().toISOString(), connected: false, sources: PREVIEW_SOURCES, windowDays: 7, since: since.toISOString() }
 }

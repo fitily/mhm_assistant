@@ -1,40 +1,13 @@
 <script setup>
-// Accueil commun aux deux rôles : briefing médical pour le médecin, accès aux espaces et au chat.
-import { computed, onMounted, ref } from 'vue'
+// Accueil commun aux deux rôles : accès aux espaces et au chat. (Les actualités médicales sont dans /news.)
+import { computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
 import AppShell from '@/components/layout/AppShell.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
-import EmptyState from '@/components/ui/EmptyState.vue'
-import NewsCard from '@/components/news/NewsCard.vue'
-import SkeletonBlock from '@/components/ui/SkeletonBlock.vue'
-import { fetchNews } from '@/services/news'
-import { timeAgo } from '@/utils/format'
 
 const auth = useAuthStore()
 const chat = useChatStore()
-const medicalNews = ref([])
-const sourceStatus = ref([])
-const newsState = ref('idle') // idle | loading | error | ready
-const newsUpdatedAt = ref(null)
-let newsRequestId = 0
-
-async function loadMedicalNews() {
-  const requestId = ++newsRequestId
-  newsState.value = 'loading'
-  try {
-    const result = await fetchNews({ token: auth.token })
-    if (requestId !== newsRequestId) return
-    medicalNews.value = result.items
-    sourceStatus.value = result.sources
-    newsUpdatedAt.value = result.updatedAt
-    newsState.value = 'ready'
-  } catch (error) {
-    if (requestId !== newsRequestId) return
-    if (error?.status === 401) auth.logout()
-    newsState.value = 'error'
-  }
-}
 
 // Espace propre à chaque rôle (le router vérifie aussi l'accès).
 const WORKSPACES = [
@@ -88,18 +61,6 @@ const shortcuts = [
 // Chaque profil ne voit que ce qui lui est utile (le backend vérifie aussi les droits).
 const workspaces = computed(() => WORKSPACES.filter((w) => w.roles.includes(auth.role)))
 const visibleShortcuts = computed(() => shortcuts.filter((s) => s.roles.includes(auth.role)))
-const breakingNews = computed(() =>
-  medicalNews.value.filter((item) => item.category === 'breaking' || item.category === 'update').slice(0, 4),
-)
-const researchNews = computed(() =>
-  medicalNews.value.filter((item) => item.category === 'research').slice(0, 4),
-)
-const connectedSources = computed(() => sourceStatus.value.filter((source) => source.connected).length)
-const updatedLabel = computed(() => (newsUpdatedAt.value ? `Updated ${timeAgo(newsUpdatedAt.value)}` : 'Not updated yet'))
-
-onMounted(() => {
-  if (auth.isDoctor) loadMedicalNews()
-})
 </script>
 
 <template>
@@ -109,8 +70,8 @@ onMounted(() => {
       <h1>Welcome {{ auth.displayName }} 👋</h1>
       <p>
         <template v-if="auth.isDoctor">
-          Your clinical briefing brings together the latest health updates and research. Ask
-          <strong>iA'mbovo</strong> a question any time.
+          Find the latest health updates in <strong>Medical news</strong>, and ask <strong>iA'mbovo</strong> a
+          question any time.
         </template>
         <template v-else>
           Welcome to <strong>iA'mbovo</strong>. Click the blue bubble at the bottom right to chat with the
@@ -118,89 +79,6 @@ onMounted(() => {
         </template>
       </p>
       <button class="btn" type="button" @click="chat.openFullscreen()">iA'mbovo</button>
-    </section>
-
-    <section
-      v-if="auth.isDoctor"
-      class="clinical-briefing"
-      aria-labelledby="briefing-title"
-      :aria-busy="newsState === 'loading'"
-    >
-      <header class="briefing-head">
-        <div>
-          <p class="briefing-eyebrow">Clinical watch</p>
-          <h2 id="briefing-title">Your medical briefing</h2>
-          <p class="briefing-description">Trusted updates from WHO, The Lancet and NEJM.</p>
-        </div>
-        <div class="briefing-actions">
-          <span v-if="newsState === 'ready'" class="updated">
-            {{ connectedSources }} of {{ sourceStatus.length }} sources connected · {{ updatedLabel }}
-          </span>
-          <button class="btn btn-ghost" type="button" :disabled="newsState === 'loading'" @click="loadMedicalNews">
-            <AppIcon name="refresh" :size="18" />Refresh
-          </button>
-        </div>
-      </header>
-
-      <ul v-if="newsState === 'ready'" class="source-status" aria-label="News source availability">
-        <li v-for="source in sourceStatus" :key="source.key">
-          <i class="source-dot" :class="{ online: source.connected }" aria-hidden="true" />
-          {{ source.label }}
-        </li>
-      </ul>
-
-      <div v-if="newsState === 'loading'" class="briefing-grid" aria-busy="true">
-        <section v-for="section in 2" :key="section" class="feed-panel">
-          <SkeletonBlock width="45%" height="22px" />
-          <div v-for="card in 2" :key="card" class="feed-skeleton">
-            <SkeletonBlock width="30%" height="16px" radius="999px" />
-            <SkeletonBlock height="20px" />
-            <SkeletonBlock width="75%" height="14px" />
-          </div>
-        </section>
-      </div>
-
-      <EmptyState
-        v-else-if="newsState === 'error'"
-        icon="alert"
-        tone="danger"
-        title="The medical briefing could not be loaded"
-        text="The news sources are temporarily unavailable. Check your connection and try again."
-      >
-        <button class="btn" type="button" @click="loadMedicalNews">Try again</button>
-      </EmptyState>
-
-      <div v-else-if="newsState === 'ready'" class="briefing-grid">
-        <section class="feed-panel" aria-labelledby="breaking-title">
-          <header class="feed-panel-head">
-            <span class="feed-heading-icon breaking-icon"><AppIcon name="alert" :size="20" /></span>
-            <div>
-              <h3 id="breaking-title">Breaking News</h3>
-              <p>Latest health updates from WHO</p>
-            </div>
-            <RouterLink class="feed-link" :to="{ name: 'news' }">See all <AppIcon name="arrow" :size="16" /></RouterLink>
-          </header>
-          <div v-if="breakingNews.length" class="article-list">
-            <NewsCard v-for="article in breakingNews" :key="article.id" :article="article" />
-          </div>
-          <p v-else class="feed-empty">No recent WHO updates are available.</p>
-        </section>
-
-        <section class="feed-panel" aria-labelledby="research-title">
-          <header class="feed-panel-head">
-            <span class="feed-heading-icon research-icon"><AppIcon name="flask" :size="20" /></span>
-            <div>
-              <h3 id="research-title">Scientific Research</h3>
-              <p>Recent publications from leading journals</p>
-            </div>
-            <RouterLink class="feed-link" :to="{ name: 'news' }">See all <AppIcon name="arrow" :size="16" /></RouterLink>
-          </header>
-          <div v-if="researchNews.length" class="article-list">
-            <NewsCard v-for="article in researchNews" :key="article.id" :article="article" />
-          </div>
-          <p v-else class="feed-empty">No recent research publications are available.</p>
-        </section>
-      </div>
     </section>
 
     <section v-if="workspaces.length" aria-labelledby="workspace-title">
@@ -278,146 +156,6 @@ onMounted(() => {
   margin: 30px 0 14px;
   font-size: 1.12rem;
   color: var(--mhm-slate-dark);
-}
-.clinical-briefing {
-  margin-top: 30px;
-}
-.briefing-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: 16px;
-  margin-bottom: 14px;
-}
-.briefing-eyebrow {
-  margin: 0 0 4px;
-  color: var(--mhm-blue);
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-.briefing-head h2 {
-  margin: 0;
-  color: var(--mhm-slate-dark);
-  font-size: 1.35rem;
-}
-.briefing-description {
-  margin: 4px 0 0;
-  color: var(--muted);
-}
-.briefing-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.updated {
-  color: var(--muted);
-  font-size: 0.82rem;
-}
-.source-status {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 16px;
-  margin: 0 0 14px;
-  padding: 0;
-  list-style: none;
-  color: var(--muted);
-  font-size: 0.82rem;
-}
-.source-status li {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-}
-.source-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--warning);
-}
-.source-dot.online {
-  background: var(--success);
-}
-.briefing-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: start;
-  gap: 16px;
-}
-.feed-panel {
-  min-width: 0;
-  padding: 18px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  background: var(--surface-2);
-}
-.feed-panel-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 46px;
-  margin-bottom: 14px;
-}
-.feed-heading-icon {
-  flex: none;
-  width: 40px;
-  height: 40px;
-  display: grid;
-  place-items: center;
-  border-radius: 12px;
-}
-.breaking-icon {
-  color: var(--danger);
-  background: var(--danger-bg);
-}
-.research-icon {
-  color: var(--mhm-blue-dark);
-  background: var(--mhm-blue-50);
-}
-.feed-panel-head h3 {
-  margin: 0;
-  color: var(--mhm-slate-dark);
-  font-size: 1rem;
-}
-.feed-panel-head p {
-  margin: 2px 0 0;
-  color: var(--muted);
-  font-size: 0.8rem;
-}
-.feed-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: auto;
-  color: var(--mhm-blue-dark);
-  font-size: 0.82rem;
-  font-weight: 600;
-  text-decoration: none;
-  white-space: nowrap;
-}
-.feed-link:hover {
-  text-decoration: underline;
-}
-.article-list {
-  display: grid;
-  gap: 10px;
-}
-.feed-empty {
-  margin: 0;
-  padding: 20px 12px;
-  border-radius: 12px;
-  background: var(--surface);
-  color: var(--muted);
-  text-align: center;
-}
-.feed-skeleton {
-  display: grid;
-  gap: 12px;
-  padding: 16px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface);
 }
 .grid {
   display: grid;
@@ -621,9 +359,6 @@ onMounted(() => {
   .grid {
     grid-template-columns: minmax(0, 1fr);
   }
-  .briefing-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 @media (max-width: 520px) {
   .welcome {
@@ -637,20 +372,6 @@ onMounted(() => {
     max-width: none;
     min-height: 0;
     padding: 18px;
-  }
-  .briefing-head {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-  .briefing-actions {
-    width: 100%;
-    justify-content: space-between;
-  }
-  .feed-panel {
-    padding: 14px;
-  }
-  .feed-panel-head {
-    flex-wrap: wrap;
   }
 }
 @media (prefers-reduced-motion: reduce) {

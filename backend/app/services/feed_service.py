@@ -4,17 +4,20 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import datetime, time as day_start, timedelta, timezone
 from typing import Callable
 
 import httpx
 
+from app.core.config import get_settings
 from app.domain.feeds.parser import parse_journal_feed, parse_who_afro_updates, parse_who_news
 
 log = logging.getLogger("mhm.feeds")
 
 _TIMEOUT = httpx.Timeout(8.0, connect=3.0)
 _CACHE_TTL_SECONDS = 300
+NEWS_WINDOW_DAYS = 7                           # seul l'affichage est limité : le cache garde tout ce que les sources renvoient
+_FUTURE_TOLERANCE = timedelta(minutes=15)      # petite marge pour un décalage d'horloge entre une source et nous
 _MAX_SOURCE_BYTES = 2_000_000
 _CACHE: tuple[float, dict] | None = None
 _CACHE_LOCK = asyncio.Lock()
@@ -149,14 +152,45 @@ async def get_news() -> dict:
         return await _fetch_all()
 
 
-def filter_news(payload: dict, *, category: str, query: str) -> dict:
+def news_window(now: datetime | None = None) -> tuple[datetime, datetime]:
+    """Période affichée, en UTC : de minuit (fuseau de l'application) il y a 7 jours jusqu'à maintenant.
+
+    Recalculée à chaque appel : elle suit donc la date de consultation, même quand les articles viennent du cache.
+    Partir de minuit évite qu'un article daté du jour J (les sources OMS ne donnent souvent que la date) disparaisse
+    en cours de journée J+7.
+    """
+    tz = get_settings().tz
+    local_now = (now or datetime.now(timezone.utc)).astimezone(tz)
+    start = datetime.combine(local_now.date() - timedelta(days=NEWS_WINDOW_DAYS), day_start.min, tzinfo=tz)
+    return start.astimezone(timezone.utc), local_now.astimezone(timezone.utc) + _FUTURE_TOLERANCE
+
+
+def _published(article: dict) -> datetime | None:
+    """Date de publication de l'article (UTC), ou None si absente ou illisible."""
+    value = article.get("published_at")
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value))
+    except ValueError:
+        return None
+    return (parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)).astimezone(timezone.utc)
+
+
+def filter_news(payload: dict, *, category: str, query: str, now: datetime | None = None) -> dict:
+    """Garde les articles PUBLIÉS pendant la période (date de publication de la source), puis applique catégorie et recherche.
+
+    Sans date lisible, un article est écarté : on ne peut pas prouver qu'il est récent.
+    """
+    start, end = news_window(now)
     terms = query.casefold().split()
-    items = [
-        item for item in payload["items"]
-        if (category == "all" or item["category"] == category)
-        and all(
-            term in f'{item["title"]} {item["summary"]} {item["source"]}'.casefold()
-            for term in terms
-        )
-    ]
-    return {**payload, "items": items}
+    items = []
+    for item in payload["items"]:
+        published = _published(item)
+        if published is None or not (start <= published <= end):
+            continue
+        if category != "all" and item["category"] != category:
+            continue
+        if all(term in f'{item["title"]} {item["summary"]} {item["source"]}'.casefold() for term in terms):
+            items.append(item)
+    return {**payload, "items": items, "window_days": NEWS_WINDOW_DAYS, "since": start.isoformat()}
