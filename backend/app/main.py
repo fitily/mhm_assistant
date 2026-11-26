@@ -4,7 +4,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import auth, chat, health, kpis, superset
+from app.api import auth, chat, feeds, health, kpis, superset
 from app.core.config import ASSISTANT_NAME, get_settings
 
 
@@ -19,6 +19,7 @@ def create_app() -> FastAPI:
     app.include_router(chat.router)
     app.include_router(superset.router)
     app.include_router(kpis.router)
+    app.include_router(feeds.router)
     return app
 
 

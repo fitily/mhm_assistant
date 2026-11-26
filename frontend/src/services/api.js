@@ -119,6 +119,15 @@ export function fetchKpis({ token }) {
   return request('/v1/kpis', { token })
 }
 
+/** GET /v1/news (doctor) -> normalized WHO and journal articles with per-source availability. */
+export function fetchNewsFeed({ category = 'all', query = '', token } = {}) {
+  const params = new URLSearchParams()
+  if (category !== 'all') params.set('category', category)
+  if (query.trim()) params.set('q', query.trim())
+  const suffix = params.toString()
+  return request(`/v1/news${suffix ? `?${suffix}` : ''}`, { token })
+}
+
 /** GET /v1/superset/dashboards (admin) -> [{ key, title, description, available }] */
 export function fetchDashboards({ token }) {
   return request('/v1/superset/dashboards', { token })

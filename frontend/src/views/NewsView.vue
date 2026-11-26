@@ -1,9 +1,10 @@
 <script setup>
-// Espace « Medical news » du médecin. Prêt à recevoir un flux réel :
-//  - les données viennent de services/news.js (à brancher sur /v1/news)
-//  - états gérés : chargement, erreur, flux non connecté, aucun résultat, liste
+// Espace « Medical news » du médecin :
+//  - les données viennent de services/news.js via /v1/news
+//  - états gérés : chargement, erreur, disponibilité partielle, aucun résultat, liste
 //  - filtres (catégorie + recherche) déjà reliés ; la recherche est « débouncée »
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useAuthStore } from '@/stores/auth'
 import AppShell from '@/components/layout/AppShell.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import SectionCard from '@/components/ui/SectionCard.vue'
@@ -18,8 +19,10 @@ import { timeAgo } from '@/utils/format'
 
 const category = ref('all')
 const query = ref('')
+const auth = useAuthStore()
 const items = ref([])
 const connected = ref(false)
+const sources = ref([])
 const updatedAt = ref(null)
 const state = ref('loading') // loading | error | ready
 
@@ -30,14 +33,18 @@ async function load() {
   const id = ++requestId
   state.value = 'loading'
   try {
-    const res = await fetchNews({ category: category.value, query: query.value })
+    const res = await fetchNews({ category: category.value, query: query.value, token: auth.token })
     if (id !== requestId) return
     items.value = res.items
     connected.value = res.connected
+    sources.value = res.sources
     updatedAt.value = res.updatedAt
     state.value = 'ready'
-  } catch {
-    if (id === requestId) state.value = 'error'
+  } catch (error) {
+    if (id === requestId) {
+      if (error?.status === 401) auth.logout()
+      state.value = 'error'
+    }
   }
 }
 
@@ -108,8 +115,8 @@ onBeforeUnmount(() => clearTimeout(timer))
           <EmptyState
             v-else
             icon="news"
-            title="Live medical news is coming soon"
-            text="Breaking news, recent research and important medical updates will appear here as soon as the news feed is connected."
+            title="No medical news is available"
+            text="The latest health updates and research publications will appear here when available."
           />
         </SectionCard>
 
@@ -120,14 +127,22 @@ onBeforeUnmount(() => clearTimeout(timer))
 
       <aside class="side">
         <SectionCard title="Feed status">
-          <p class="status" :class="{ on: connected }">
-            <i aria-hidden="true" />{{ connected ? 'Live feed connected' : 'Live feed not connected yet' }}
+          <p class="status" :class="{ on: connected, partial: !connected && sources.some((source) => source.connected) }">
+            <i aria-hidden="true" />{{
+              connected
+                ? 'All sources connected'
+                : sources.some((source) => source.connected)
+                  ? `${sources.filter((source) => source.connected).length} of ${sources.length} sources connected`
+                  : 'Sources unavailable'
+            }}
           </p>
-          <p class="note">Planned content</p>
+          <p class="note">News sources</p>
           <ul class="planned">
-            <li><AppIcon name="alert" :size="16" />Breaking medical news</li>
-            <li><AppIcon name="flask" :size="16" />Recent research findings</li>
-            <li><AppIcon name="info" :size="16" />Important medical updates</li>
+            <li v-for="source in sources" :key="source.key">
+              <span class="source-dot" :class="{ online: source.connected }" aria-hidden="true" />
+              <a :href="source.url" target="_blank" rel="noopener noreferrer">{{ source.label }}</a>
+              <span class="source-label">{{ source.connected ? 'Live' : 'Unavailable' }}</span>
+            </li>
           </ul>
         </SectionCard>
       </aside>
@@ -187,6 +202,9 @@ onBeforeUnmount(() => clearTimeout(timer))
 .status.on {
   color: var(--success);
 }
+.status.partial {
+  color: var(--warning);
+}
 .note {
   margin: 0 0 8px;
   font-size: 0.78rem;
@@ -208,8 +226,29 @@ onBeforeUnmount(() => clearTimeout(timer))
   gap: 10px;
   color: var(--mhm-slate);
 }
-.planned :deep(svg) {
-  color: var(--mhm-blue);
+.planned li a {
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+.planned li a:hover {
+  color: var(--mhm-blue-dark);
+  text-decoration: underline;
+}
+.planned .source-label {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+.source-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--warning);
+}
+.source-dot.online {
+  background: var(--success);
 }
 @media (max-width: 1050px) {
   .layout {

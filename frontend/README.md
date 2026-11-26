@@ -120,9 +120,12 @@ Le menu se règle dans `utils/navigation.js` ; l'accès aux pages dans `router/i
   `services/analytics.js` fournit le catalogue (pour l'instant des emplacements vides, aucun appel réseau) ;
   `components/analytics/DashboardViewport.vue` expose `mountEl`, l'élément où monter l'iframe, et gère les états
   `loading | error | empty | coming-soon | ready`. Le tableau choisi est dans l'URL (`?d=clé`).
-- **Médecin → `/news`** (`views/NewsView.vue`) : fil d'actualités médicales (alerte, recherche, catégories).
-  `services/news.js` contient le contrat d'API attendu ; sans flux, la page affiche « bientôt disponible ».
-  `VITE_NEWS_PREVIEW=true` affiche des cartes d'exemple pour juger la mise en page.
+- **Médecin → `/`** (`views/HomeView.vue`) : briefing avec les dernières actualités de l'OMS et de l'OMS Afrique,
+  ainsi que les publications du Lancet et du NEJM. Le backend agrège les pages OMS et les flux RSS des revues
+  dans `GET /v1/news`, réservé au rôle médecin ; l'état de chaque source est affiché séparément.
+- **Médecin → `/news`** (`views/NewsView.vue`) : fil complet avec filtres par catégorie et recherche.
+  Les sources restent accessibles depuis chaque article. `VITE_NEWS_PREVIEW=true` active explicitement
+  des cartes d'exemple pour prévisualiser l'interface sans backend (ce ne sont pas de vraies actualités).
 - Composants réutilisables : `components/ui/` (PageHeader, SectionCard, StatTile, EmptyState, SkeletonBlock, AppIcon).
 
 ## 6. Comportement du chat

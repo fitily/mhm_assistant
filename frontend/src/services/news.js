@@ -1,12 +1,5 @@
 // Point d'entrée unique des actualités médicales.
-// ÉTAT ACTUEL : aucun flux réel. `fetchNews` renvoie une liste vide, sauf si VITE_NEWS_PREVIEW=true
-// (aperçu du design avec des cartes d'exemple, clairement génériques et non médicales).
-//
-// CONTRAT pour l'intégration (étape suivante) — il suffit de remplacer le corps de `fetchNews` :
-//   GET /v1/news?category=&q=  ->  { items: Article[], updated_at: ISO }
-//   Article = { id, title, summary, source, url, published_at (ISO), category, image? }
-//   category ∈ NEWS_CATEGORIES (hors « all »). Temps réel possible plus tard (SSE/WebSocket) : le view
-//   n'a qu'à ajouter les nouveaux articles à `items`.
+import { fetchNewsFeed } from './api'
 
 export const NEWS_CATEGORIES = [
   { key: 'all', label: 'All' },
@@ -15,8 +8,13 @@ export const NEWS_CATEGORIES = [
   { key: 'update', label: 'Medical updates' },
 ]
 
-export const NEWS_CONNECTED = false
 const PREVIEW = import.meta.env.VITE_NEWS_PREVIEW === 'true'
+const PREVIEW_SOURCES = [
+  { key: 'who', label: 'WHO', url: 'https://www.who.int/news', connected: false },
+  { key: 'who-africa', label: 'WHO Africa', url: 'https://www.afro.who.int/outbreaks-and-emergencies-updates', connected: false },
+  { key: 'lancet', label: 'The Lancet', url: 'https://www.thelancet.com/', connected: false },
+  { key: 'nejm', label: 'NEJM', url: 'https://www.nejm.org/', connected: false },
+]
 
 const ago = (hours) => new Date(Date.now() - hours * 3_600_000).toISOString()
 
@@ -34,12 +32,20 @@ const SAMPLE = [
  * @param {{category?: string, query?: string}} filters
  * @returns {Promise<{items: Array, updatedAt: string|null, connected: boolean}>}
  */
-export async function fetchNews({ category = 'all', query = '' } = {}) {
-  if (!PREVIEW) return { items: [], updatedAt: null, connected: NEWS_CONNECTED }
+export async function fetchNews({ category = 'all', query = '', token } = {}) {
+  if (!PREVIEW) {
+    const data = await fetchNewsFeed({ category, query, token })
+    return {
+      items: data.items || [],
+      updatedAt: data.updated_at || null,
+      connected: Boolean(data.connected),
+      sources: data.sources || [],
+    }
+  }
 
   const q = query.trim().toLowerCase()
   const items = SAMPLE.map(({ hours, ...a }) => ({ ...a, url: null, published_at: ago(hours) })).filter(
     (a) => (category === 'all' || a.category === category) && (!q || `${a.title} ${a.summary}`.toLowerCase().includes(q)),
   )
-  return { items, updatedAt: new Date().toISOString(), connected: false }
+  return { items, updatedAt: new Date().toISOString(), connected: false, sources: PREVIEW_SOURCES }
 }
