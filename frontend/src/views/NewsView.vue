@@ -1,7 +1,7 @@
 <script setup>
 // Espace « Medical news » du médecin : les actualités PUBLIÉES pendant les 7 derniers jours (période dynamique).
 //  - les données viennent de services/news.js via /v1/news ; le backend filtre d'après la date de publication
-//  - affichage sobre : liste groupée par jour, 8 articles à la fois (« Show more »)
+//  - affichage sobre, comme la page « News » de l'OMS : image à gauche, texte à droite, 8 articles à la fois (« Show more »)
 //  - états gérés : chargement, erreur, disponibilité partielle, aucun résultat, liste
 //  - filtres (catégorie + recherche) ; la recherche est « débouncée »
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
@@ -15,7 +15,7 @@ import AppIcon from '@/components/ui/AppIcon.vue'
 import NewsCard from '@/components/news/NewsCard.vue'
 import NewsFilters from '@/components/news/NewsFilters.vue'
 import { fetchNews, NEWS_CATEGORIES } from '@/services/news'
-import { dayGroupKey, dayLabel, shortDate, timeAgo } from '@/utils/format'
+import { shortDate, timeAgo } from '@/utils/format'
 
 const PAGE_SIZE = 8
 
@@ -27,6 +27,7 @@ const sources = ref([])
 const updatedAt = ref(null)
 const windowDays = ref(7)
 const since = ref(null)
+const outsideWindow = ref(0) // articles correspondant aux filtres mais hors période (non affichés)
 const shown = ref(PAGE_SIZE)
 const state = ref('loading') // loading | error | ready
 
@@ -45,6 +46,7 @@ async function load() {
     updatedAt.value = res.updatedAt
     windowDays.value = res.windowDays
     since.value = res.since
+    outsideWindow.value = res.outsideWindow
     state.value = 'ready'
   } catch (error) {
     if (id === requestId) {
@@ -63,19 +65,14 @@ const period = computed(() =>
 )
 const online = computed(() => sources.value.filter((source) => source.connected).length)
 
-// Les articles arrivent triés du plus récent au plus ancien : on regroupe les voisins qui ont le même jour.
 const visible = computed(() => items.value.slice(0, shown.value))
 const remaining = computed(() => Math.max(0, items.value.length - shown.value))
-const groups = computed(() => {
-  const out = []
-  for (const article of visible.value) {
-    const key = dayGroupKey(article.published_at)
-    const last = out[out.length - 1]
-    if (last && last.key === key) last.articles.push(article)
-    else out.push({ key, label: dayLabel(article.published_at), iso: article.published_at, articles: [article] })
-  }
-  return out
-})
+// Explique une liste vide : rien n'a été publié pendant la période, mais des articles plus anciens existent.
+const olderNote = computed(() =>
+  outsideWindow.value
+    ? `${outsideWindow.value} older ${outsideWindow.value > 1 ? 'articles are' : 'article is'} not shown because ${outsideWindow.value > 1 ? 'they were' : 'it was'} not published in this period.`
+    : '',
+)
 
 watch(category, load)
 watch(query, () => {
@@ -124,7 +121,7 @@ onBeforeUnmount(() => clearTimeout(timer))
           v-if="hasFilters"
           icon="search"
           title="No article matches your search"
-          :text="`Nothing published in the last ${windowDays} days matches. Try another keyword or category.`"
+          :text="`Nothing published in the last ${windowDays} days matches. Try another keyword or category. ${olderNote}`"
         >
           <button class="btn btn-ghost" type="button" @click="resetFilters">Clear filters</button>
         </EmptyState>
@@ -132,17 +129,12 @@ onBeforeUnmount(() => clearTimeout(timer))
           v-else
           icon="news"
           :title="`No medical news in the last ${windowDays} days`"
-          text="New articles from WHO and leading journals will appear here as soon as they are published."
+          :text="olderNote || 'New articles from WHO, the Ministry of Public Health and leading journals will appear here as soon as they are published.'"
         />
       </SectionCard>
 
       <div v-else class="feed">
-        <section v-for="group in groups" :key="group.key" class="day">
-          <h2 class="day-label"><time :datetime="group.iso">{{ group.label }}</time></h2>
-          <div class="list">
-            <NewsCard v-for="article in group.articles" :key="article.id" :article="article" />
-          </div>
-        </section>
+        <NewsCard v-for="article in visible" :key="article.id" :article="article" />
         <button v-if="remaining" class="btn btn-ghost more" type="button" @click="shown += PAGE_SIZE">
           Show more ({{ remaining }})
         </button>
@@ -178,32 +170,11 @@ onBeforeUnmount(() => clearTimeout(timer))
 .feed {
   display: flex;
   flex-direction: column;
-  gap: 22px;
-}
-.day-label {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 0 0 6px;
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--mhm-slate);
-}
-.day-label::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--border);
-}
-.list {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  border-top: 1px solid var(--border);
 }
 .more {
   align-self: center;
+  margin-top: 18px;
 }
 .skeletons {
   display: flex;

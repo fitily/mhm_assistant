@@ -183,8 +183,8 @@ def test_feed_service_returns_available_sources_when_one_source_fails(monkeypatc
         feed_service.clear_cache()
 
     assert payload["connected"] is False
-    assert len(payload["items"]) == 3
-    assert [source["connected"] for source in payload["sources"]] == [False, True, True, True]
+    assert len(payload["items"]) == 4
+    assert [source["connected"] for source in payload["sources"]] == [False, True, True, True, True]
 
 
 # --- période : 7 derniers jours, d'après la date de PUBLICATION ---------------------------------------------------
@@ -257,3 +257,79 @@ def test_endpoint_returns_only_recent_articles_with_the_window(client, monkeypat
     body = client.get("/v1/news", headers=_auth("doctor")).json()
     assert [a["title"] for a in body["items"]] == ["Recent"]
     assert body["window_days"] == 7 and body["since"]
+
+
+# --- Ministère de la Santé Publique (msanp.gov.mg) : structure déduite de la page, à confirmer sur le vrai HTML ---------
+
+from app.domain.feeds.parser import _french_date, parse_msanp_news  # noqa: E402
+
+MSANP_CARDS = """
+<div class="row">
+  <div class="col-md-4"><div class="card">
+    <img src="/upload/Article/Cover/914615009_1153243224364357_2326781537187293901_n (1).jpg" alt="">
+    <div class="card-body">
+      <small>20 nov. 2026</small>
+      <h5>AGORA SANTÉ ANDIANY FAHAROA 2026 : SEHATRA IOMBONANA HO FAMPANDROSOANA NY FAHASALAMAM-BAHOAKA</h5>
+      <p>Tanteraka ny 19 novambra, ny fanokafana amin'ny fomba ofisialy ny hetsika ...</p>
+      <a href="/index.php/article?id=568">Voir Plus</a>
+    </div></div></div>
+  <div class="col-md-4"><div class="card">
+    <a href="https://www.msanp.gov.mg/index.php/article?id=567"><img src="https://www.msanp.gov.mg/upload/Article/Cover/913089884.jpg"></a>
+    <span>19 nov. 2026</span>
+    <h5><a href="/index.php/article?id=567">Ny tanora no hoavin'ny firenena</a></h5>
+    <p>Notanterahina manomboka androany alakamisy 19 novambra ny ...</p>
+    <a class="btn" href="/index.php/article?id=567">Voir Plus</a>
+  </div></div>
+  <div class="col-md-4"><div class="card">
+    <h5>Lien étranger</h5><span>18 nov. 2026</span><a href="https://evil.example.org/article?id=1">Voir Plus</a>
+  </div></div>
+</div>
+<ul class="pagination"><li><a href="listActualites?page=2">Suivante</a></li></ul>
+"""
+
+
+def test_msanp_parser_extracts_cards_with_image_date_and_summary():
+    articles = parse_msanp_news(MSANP_CARDS)
+
+    assert [a["url"] for a in articles] == [
+        "https://www.msanp.gov.mg/index.php/article?id=568",
+        "https://www.msanp.gov.mg/index.php/article?id=567",
+    ]
+    first, second = articles
+    assert first["title"].startswith("Agora santé andiany faharoa 2026 : Sehatra")      # MAJUSCULES -> phrase lisible
+    assert first["published_at"] == "2026-11-20T00:00:00+00:00" and second["published_at"] == "2026-11-19T00:00:00+00:00"
+    assert first["source"] == "Ministère de la Santé Publique" and first["category"] == "breaking"
+    assert first["image"] == ("https://www.msanp.gov.mg/upload/Article/Cover/"
+                              "914615009_1153243224364357_2326781537187293901_n%20(1).jpg")   # espace littéral encodé
+    assert first["summary"].startswith("Tanteraka ny 19 novambra") and "Voir Plus" not in first["summary"]
+    assert second["title"] == "Ny tanora no hoavin'ny firenena" and second["image"].endswith("913089884.jpg")
+
+
+def test_msanp_parser_ignores_pages_without_articles_and_foreign_links():
+    assert parse_msanp_news("<html><body><p>Maintenance</p></body></html>") == []
+    assert parse_msanp_news('<div><h5>X</h5><a href="https://evil.example.org/article?id=1">Voir Plus</a></div>') == []
+
+
+@pytest.mark.parametrize("text,expected", [
+    ("20 nov. 2026", "2026-11-20T00:00:00+00:00"), ("5 janvier 2026", "2026-01-05T00:00:00+00:00"),
+    ("3 févr. 2026", "2026-02-03T00:00:00+00:00"), ("12 août 2026", "2026-08-12T00:00:00+00:00"),
+    ("1 déc. 2026", "2026-12-01T00:00:00+00:00"), ("19 novambra 2026", "2026-11-19T00:00:00+00:00"),
+    ("pas de date", None), ("31 nov. 2026", None),
+])
+def test_french_and_malagasy_dates(text, expected):
+    assert _french_date(text) == expected
+
+
+def test_msanp_source_is_registered_and_listed():
+    sources = {s["key"]: s for s in feed_service._sources()}
+    assert sources["msanp"]["url"] == "https://www.msanp.gov.mg/index.php/listActualites"
+    assert [s["key"] for s in feed_service._sources()] == ["who", "who-africa", "msanp", "lancet", "nejm"]
+
+
+def test_outside_window_counts_hidden_matching_articles(monkeypatch):
+    items = [_article("2026-11-25T10:00:00+00:00", category="breaking"),
+             _article("2026-10-01T10:00:00+00:00", category="breaking"),
+             _article(None, category="breaking"),
+             _article("2026-10-01T10:00:00+00:00", category="research")]
+    out = _window(monkeypatch, items, category="breaking")
+    assert len(out["items"]) == 1 and out["outside_window"] == 2     # la catégorie « research » n'est pas comptée

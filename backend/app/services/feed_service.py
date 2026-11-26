@@ -10,7 +10,7 @@ from typing import Callable
 import httpx
 
 from app.core.config import get_settings
-from app.domain.feeds.parser import parse_journal_feed, parse_who_afro_updates, parse_who_news
+from app.domain.feeds.parser import parse_journal_feed, parse_msanp_news, parse_who_afro_updates, parse_who_news
 
 log = logging.getLogger("mhm.feeds")
 
@@ -57,9 +57,9 @@ async def _fetch_source(
     return {"key": key, "label": label, "url": url, "connected": True}, parse(content)
 
 
-async def _fetch_all() -> dict:
-    global _CACHE
-    sources = (
+def _sources() -> tuple[dict, ...]:
+    """Sources d'actualités (aussi utilisées par scripts/check_news.py)."""
+    return (
         {
             "key": "who",
             "label": "WHO",
@@ -71,6 +71,12 @@ async def _fetch_all() -> dict:
             "label": "WHO Africa",
             "url": "https://www.afro.who.int/outbreaks-and-emergencies-updates",
             "parse": parse_who_afro_updates,
+        },
+        {
+            "key": "msanp",
+            "label": "Ministère de la Santé Publique",
+            "url": "https://www.msanp.gov.mg/index.php/listActualites",
+            "parse": parse_msanp_news,
         },
         {
             "key": "lancet",
@@ -87,6 +93,11 @@ async def _fetch_all() -> dict:
             "parse": lambda content: parse_journal_feed(content, source="NEJM", host="nejm.org"),
         },
     )
+
+
+async def _fetch_all() -> dict:
+    global _CACHE
+    sources = _sources()
     headers = {
         "User-Agent": "MHM-Ambovo-Health-News/1.0",
         "Accept": "text/html, application/rss+xml, application/xml;q=0.9, */*;q=0.8",
@@ -184,13 +195,16 @@ def filter_news(payload: dict, *, category: str, query: str, now: datetime | Non
     """
     start, end = news_window(now)
     terms = query.casefold().split()
-    items = []
+    items, outside = [], 0
     for item in payload["items"]:
-        published = _published(item)
-        if published is None or not (start <= published <= end):
-            continue
         if category != "all" and item["category"] != category:
             continue
-        if all(term in f'{item["title"]} {item["summary"]} {item["source"]}'.casefold() for term in terms):
+        if not all(term in f'{item["title"]} {item["summary"]} {item["source"]}'.casefold() for term in terms):
+            continue
+        published = _published(item)
+        if published is not None and start <= published <= end:
             items.append(item)
-    return {**payload, "items": items, "window_days": NEWS_WINDOW_DAYS, "since": start.isoformat()}
+        else:
+            outside += 1  # correspond à la recherche mais hors période (trop ancien, sans date lisible ou daté du futur)
+    return {**payload, "items": items, "window_days": NEWS_WINDOW_DAYS, "since": start.isoformat(),
+            "outside_window": outside}

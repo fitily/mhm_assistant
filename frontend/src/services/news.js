@@ -30,7 +30,7 @@ const SAMPLE = [
 
 /**
  * @param {{category?: string, query?: string}} filters
- * @returns {Promise<{items: Array, updatedAt: string|null, connected: boolean, sources: Array, windowDays: number, since: string|null}>}
+ * @returns {Promise<{items: Array, updatedAt: string|null, connected: boolean, sources: Array, windowDays: number, since: string|null, outsideWindow: number}>}
  *   `windowDays` / `since` : période affichée (les N derniers jours), calculée par le backend d'après la date de PUBLICATION.
  */
 export async function fetchNews({ category = 'all', query = '', token } = {}) {
@@ -43,6 +43,7 @@ export async function fetchNews({ category = 'all', query = '', token } = {}) {
       sources: data.sources || [],
       windowDays: data.window_days || 7,
       since: data.since || null,
+      outsideWindow: data.outside_window || 0,
     }
   }
 
@@ -53,5 +54,5 @@ export async function fetchNews({ category = 'all', query = '', token } = {}) {
   const since = new Date()
   since.setHours(0, 0, 0, 0)
   since.setDate(since.getDate() - 7)
-  return { items, updatedAt: new Date().toISOString(), connected: false, sources: PREVIEW_SOURCES, windowDays: 7, since: since.toISOString() }
+  return { items, updatedAt: new Date().toISOString(), connected: false, sources: PREVIEW_SOURCES, windowDays: 7, since: since.toISOString(), outsideWindow: 0 }
 }

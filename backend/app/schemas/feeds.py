@@ -29,3 +29,4 @@ class NewsFeedOut(BaseModel):
     sources: list[NewsSourceOut]
     window_days: int = 7          # période affichée : les N derniers jours
     since: str | None = None      # début de cette période (ISO, UTC)
+    outside_window: int = 0       # articles correspondant aux filtres mais hors période (non affichés)
