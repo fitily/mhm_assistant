@@ -10,13 +10,13 @@
 #   keywords    mots par lesquels on peut désigner ce dashboard dans le chat (optionnel, sans accent obligatoire)
 dashboards:
   - key: visite
-    title: AI-assistant-dashboard
+    title: Admission (visit) dashboard
     uuid: b973604e-c78d-47ce-8fdf-876722c1aaed
     description: Tableau de bord des visites
     keywords: [visite, visites, visit, visits, consultation, consultations]
 
   - key: medicale
-    title: HMH_Medical_Dashboard
+    title: Medical dashboard
     uuid: 7893e593-7f0c-481f-8326-8e2843abe736
     description: Tableau de bord médical
     keywords: [medical, medicale, medicaux, medicales, health]
