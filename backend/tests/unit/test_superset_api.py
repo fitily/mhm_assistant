@@ -23,6 +23,13 @@ class StubClient:
         return self.token
 
 
+@pytest.fixture(autouse=True)
+def fresh_titles():
+    superset_service.clear_title_cache()
+    yield
+    superset_service.clear_title_cache()
+
+
 @pytest.fixture
 def env(monkeypatch, tmp_path):
     monkeypatch.setenv("AUTH_DISABLED", "0")

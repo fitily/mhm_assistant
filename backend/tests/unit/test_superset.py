@@ -206,3 +206,86 @@ def test_service_refuses_key_outside_catalog_without_calling_superset():
     with pytest.raises(UnknownDashboard):
         superset_service.create_guest_access("inconnu", Principal("a@mhm.org", "admin"), client=stub)
     assert stub.seen is None
+
+
+# ----- Noms des dashboards synchronisés avec Superset ----------------------------------------
+class FakeSupersetDashboards:
+    """Faux Superset : liste des dashboards + UUID d'intégration de chacun."""
+
+    def __init__(self, dashboards, *, list_code=200):
+        self.dashboards = dashboards  # {id: (titre, uuid d'intégration ou None)}
+        self.list_code = list_code
+        self.calls: list[httpx.Request] = []
+
+    def __call__(self, request: httpx.Request) -> httpx.Response:
+        self.calls.append(request)
+        path = request.url.path
+        if path.endswith("/security/login"):
+            return httpx.Response(200, json={"access_token": "ACCESS"})
+        if path == "/api/v1/dashboard/":
+            if self.list_code != 200:
+                return httpx.Response(self.list_code, json={})
+            rows = [{"id": i, "dashboard_title": t} for i, (t, _) in self.dashboards.items()]
+            return httpx.Response(200, json={"result": rows, "count": len(rows)})
+        if path.endswith("/embedded"):
+            did = int(path.split("/")[-2])
+            emb = self.dashboards[did][1]
+            return httpx.Response(200, json={"result": {"uuid": emb}}) if emb else httpx.Response(404, json={})
+        return httpx.Response(404)
+
+
+def test_client_reads_titles_by_embedded_uuid():
+    fake = FakeSupersetDashboards({1: ("AI-assistant-dashboard", UUID_A.upper()), 2: ("Autre", None),
+                                   3: ("HMH_Medical_Dashboard", UUID_B)})
+    titles = make_client(fake).dashboard_titles([UUID_A, UUID_B])
+    assert titles == {UUID_A: "AI-assistant-dashboard", UUID_B: "HMH_Medical_Dashboard"}
+
+
+def test_client_titles_rights_error():
+    with pytest.raises(SupersetAuthError):
+        make_client(FakeSupersetDashboards({}, list_code=403)).dashboard_titles([UUID_A])
+
+
+class StubTitles:
+    def __init__(self, titles=None, error=None):
+        self.titles, self.error, self.calls = titles or {}, error, 0
+
+    def dashboard_titles(self, uuids):
+        self.calls += 1
+        if self.error:
+            raise self.error
+        return self.titles
+
+
+@pytest.fixture
+def fresh_cache():
+    superset_service.clear_title_cache()
+    yield
+    superset_service.clear_title_cache()
+
+
+def test_service_shows_superset_names_and_follows_renames(fresh_cache, monkeypatch):
+    stub = StubTitles({UUID_A: "Nouveau nom Superset"})
+    names = {d.key: d.title for d in superset_service.list_dashboards(client=stub)}
+    assert names["visite"] == "Nouveau nom Superset"      # nom Superset
+    assert names["medicale"] == "HMH_Medical_Dashboard"   # absent de Superset : repli sur le catalogue
+    # résultat mis en cache ; après expiration, un renommage est repris
+    superset_service.list_dashboards(client=stub)
+    assert stub.calls == 1
+    superset_service.clear_title_cache()
+    stub.titles = {UUID_A: "Encore un autre nom"}
+    assert superset_service.list_dashboards(client=stub)[0].title == "Encore un autre nom"
+
+
+def test_service_falls_back_to_catalog_titles_when_superset_is_down(fresh_cache):
+    stub = StubTitles(error=SupersetUnavailable("down"))
+    titles = [d.title for d in superset_service.list_dashboards(client=stub)]
+    assert titles == ["AI-assistant-dashboard", "HMH_Medical_Dashboard"]
+    superset_service.list_dashboards(client=stub)
+    assert stub.calls == 1  # pas de nouvel essai à chaque message
+
+
+def test_service_without_sync_never_calls_superset(fresh_cache):
+    stub = StubTitles({UUID_A: "X"})
+    assert superset_service.list_dashboards(sync=False, client=stub)[0].title == "AI-assistant-dashboard"
+    assert stub.calls == 0

@@ -8,7 +8,7 @@ from app.core.errors import ConfigurationError
 from app.core.security import Principal
 from app.domain.models import AnswerResult
 from app.main import create_app
-from app.services import chat_service
+from app.services import chat_service, superset_service
 
 UUID_A = "b973604e-c78d-47ce-8fdf-876722c1aaed"
 
@@ -22,6 +22,8 @@ def isolated(monkeypatch):
         raise AssertionError("le routage normal ne doit pas être appelé pour une commande de dashboard")
 
     monkeypatch.setattr(chat_service, "audit", lambda *args: calls["audit"].append(args))
+    superset_service.clear_title_cache()
+    monkeypatch.setattr(superset_service, "_live_titles", lambda dashboards, client: {})  # pas d'appel à Superset
     monkeypatch.setattr(chat_service.router, "route", boom)
     monkeypatch.setattr(chat_service.router, "rewrite_followup", boom)
     get_settings.cache_clear()

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import threading
 import time
+from collections.abc import Iterable
 
 import httpx
 
@@ -20,6 +21,8 @@ from app.core.errors import (
     SupersetUnavailable,
 )
 
+PAGE_SIZE = 100
+MAX_PAGES = 20  # garde-fou : 2000 dashboards au plus
 ACCESS_TOKEN_TTL = 600.0  # on réutilise la connexion ~10 min (le jeton d'accès Superset dure 15 min)
 
 
@@ -52,6 +55,23 @@ class SupersetClient:
             access = self._access(force=attempt == 2)
             try:
                 return self._request_guest_token(access, dashboard_uuid, username, first_name, last_name)
+            except _Unauthorized:
+                self._forget()
+        raise SupersetAuthError("Superset refuse la connexion du compte technique du backend.")
+
+    def dashboard_titles(self, embedded_uuids: Iterable[str]) -> dict[str, str]:
+        """Noms actuels (dashboard_title) des dashboards, retrouvés par leur UUID d'intégration.
+
+        Retourne {uuid en minuscules: titre}. Un UUID absent du résultat n'est pas (ou plus) visible
+        par le compte technique. Une reconnexion automatique est tentée une fois.
+        """
+        wanted = {str(u).lower() for u in embedded_uuids}
+        if not wanted:
+            return {}
+        for attempt in (1, 2):
+            access = self._access(force=attempt == 2)
+            try:
+                return self._request_titles(access, wanted)
             except _Unauthorized:
                 self._forget()
         raise SupersetAuthError("Superset refuse la connexion du compte technique du backend.")
@@ -108,6 +128,35 @@ class SupersetClient:
         if not token:
             raise SupersetUnavailable("Réponse de jeton invité Superset inattendue.")
         return token
+
+    # ----- Noms des dashboards ----------------------------------------------------------------
+    def _request_titles(self, access: str, wanted: set[str]) -> dict[str, str]:
+        """Liste les dashboards (id + titre), puis lit l'UUID d'intégration de chacun pour faire le lien."""
+        auth = {"Authorization": f"Bearer {access}"}
+        found: dict[str, str] = {}
+        with self._client() as http:
+            for page in range(MAX_PAGES):
+                rison = f"(columns:!(id,dashboard_title),page:{page},page_size:{PAGE_SIZE})"
+                resp = self._send(http, "GET", "/api/v1/dashboard/", params={"q": rison}, headers=auth)
+                self._check(resp, "lister les dashboards")
+                rows = _json(resp).get("result") or []
+                for row in rows:
+                    if not isinstance(row, dict) or row.get("id") is None:
+                        continue
+                    emb = self._send(http, "GET", f"/api/v1/dashboard/{row['id']}/embedded", headers=auth)
+                    if emb.status_code == 404:  # dashboard sans intégration : sans intérêt ici
+                        continue
+                    self._check(emb, "lire l'intégration d'un dashboard")
+                    result = _json(emb).get("result")
+                    uuid = str(result.get("uuid", "")).lower() if isinstance(result, dict) else ""
+                    title = str(row.get("dashboard_title") or "").strip()
+                    if uuid in wanted and title:
+                        found[uuid] = title
+                        if len(found) == len(wanted):
+                            return found
+                if len(rows) < PAGE_SIZE:
+                    break
+        return found
 
     # ----- Utilitaires ------------------------------------------------------------------------
     @staticmethod

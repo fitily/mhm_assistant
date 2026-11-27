@@ -8,9 +8,20 @@ Le backend FastAPI a besoin d'un compte Superset **à lui**, uniquement pour dem
 Superset → **Settings → List Roles → +**
 
 - Nom : `ambovo_backend`
-- Permissions (cherche-les dans la liste, ajoute-les **toutes les deux et rien d'autre**) :
+- Permissions (cherche-les dans la liste, ajoute-les **toutes les trois et rien d'autre**) :
   - `can grant guest token on SecurityRestApi`
   - `can read on SecurityRestApi`
+  - `can read on Dashboard` : lecture seule, pour **synchroniser les noms** des dashboards avec Superset
+    (voir ci-dessous)
+
+### Noms des dashboards
+
+Les noms affichés dans l'application (page Analytics et chat) sont lus dans Superset (`dashboard_title`) :
+renommer un dashboard dans Superset suffit, le changement apparaît en une minute environ (cache de 60 s),
+sans modifier le code ni `config/dashboards.yaml`. Le rôle doit pouvoir **voir** ces dashboards
+(publiés, ou rôle `ambovo_backend` ajouté dans leur propriété « Roles »). Sinon, ou si Superset est
+injoignable, l'application affiche le `title` du catalogue (repli) et le signale dans les journaux
+(`Noms des dashboards non synchronisés`).
 
 ## 2. Créer l'utilisateur
 

@@ -46,7 +46,7 @@ from app.services.document_answers import (
     _knowledge_attitude_link_polarities,
     _research_guidance,
 )
-from app.services import dashboard_answers, document_answers, identity_answers
+from app.services import dashboard_answers, document_answers, identity_answers, superset_service
 from app.services.tabular_answers import _compose, _tabular
 
 
@@ -72,6 +72,8 @@ def _dashboard_command(question: str, language: str, role: str | None, history=N
     """
     try:
         dashboards = get_catalog().all()
+        if role in (None, "admin"):  # noms synchronisés avec Superset ; le médecin (refusé) ne déclenche aucun appel
+            dashboards = superset_service.with_live_titles(dashboards)
     except ConfigurationError as exc:
         log.error("Catalogue de dashboards indisponible : %s", exc)
         return None

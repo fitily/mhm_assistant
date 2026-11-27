@@ -2,7 +2,9 @@
 # Seuls ceux listés ici peuvent être ouverts : ni le chat, ni le navigateur ne peuvent en demander un autre.
 #
 #   key         identifiant court choisi par nous (minuscules, chiffres, - ou _)
-#   title       nom affiché à l'utilisateur
+#   title       nom de REPLI : le nom affiché est lu dans Superset (renommer un dashboard dans Superset
+#               suffit, sans toucher à ce fichier). Ce titre ne sert que si Superset est injoignable
+#               ou si le compte technique ne voit pas ce dashboard.
 #   uuid        UUID d'intégration (Superset : dashboard > ⋯ > Embed dashboard). Pas un secret.
 #   description phrase courte (affichée dans l'interface)
 #   keywords    mots par lesquels on peut désigner ce dashboard dans le chat (optionnel, sans accent obligatoire)
