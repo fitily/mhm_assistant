@@ -185,7 +185,7 @@ const items = computed(() => navFor(auth.role))
 .main-inner {
   max-width: var(--content-max);
   margin: 0 auto;
-  padding: 32px 28px 120px; /* marge basse : la bulle de chat ne masque rien */
+  padding: clamp(20px, 2.4vw, 32px) var(--page-gutter) 120px; /* marge basse : la bulle de chat ne masque rien */
 }
 
 @media (max-width: 900px) {
@@ -241,7 +241,7 @@ const items = computed(() => navFor(auth.role))
     padding: 8px 12px;
   }
   .main-inner {
-    padding: 20px 16px 110px;
+    padding: 20px var(--page-gutter) 110px;
   }
 }
 </style>

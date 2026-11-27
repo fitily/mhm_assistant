@@ -160,20 +160,20 @@ onBeforeUnmount(() => clearTimeout(timer))
   display: flex;
   flex-direction: column;
   gap: 18px;
-  max-width: 860px;
-  margin: 0 auto;
 }
 .updated {
   font-size: 0.85rem;
   color: var(--muted);
 }
 .feed {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 520px), 1fr));
+  column-gap: 36px;
   border-top: 1px solid var(--border);
 }
 .more {
-  align-self: center;
+  grid-column: 1 / -1;
+  justify-self: center;
   margin-top: 18px;
 }
 .skeletons {

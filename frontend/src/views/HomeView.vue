@@ -117,7 +117,7 @@ const visibleShortcuts = computed(() => shortcuts.filter((s) => s.roles.includes
 
 <style scoped>
 .welcome {
-  padding: 30px;
+  padding: clamp(24px, 2.6vw, 36px);
   border-radius: var(--radius-lg);
   color: #fff;
   background: linear-gradient(135deg, var(--mhm-blue), var(--mhm-slate));
@@ -136,7 +136,7 @@ const visibleShortcuts = computed(() => shortcuts.filter((s) => s.roles.includes
   font-size: clamp(1.4rem, 3vw, 1.9rem);
 }
 .welcome p {
-  max-width: 640px;
+  max-width: 760px;
   margin: 0 0 18px;
   opacity: 0.95;
 }
@@ -208,11 +208,9 @@ const visibleShortcuts = computed(() => shortcuts.filter((s) => s.roles.includes
 }
 
 /* ---- « Get started » : cartes de questions rapides ---- */
-/* flex + centrage : 2 cartes restent centrées (pas de vide à droite), 3 cartes se partagent la ligne */
+/* auto-fit : les cartes se partagent toute la largeur, quel que soit leur nombre (pas de vide sur les côtés) */
 .grid.shortcuts {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 18px;
 }
 .shortcut {
@@ -221,8 +219,6 @@ const visibleShortcuts = computed(() => shortcuts.filter((s) => s.roles.includes
   --accent-bg: var(--mhm-blue-50);
   position: relative;
   display: flex;
-  flex: 1 1 280px;
-  max-width: 440px;
   flex-direction: column;
   align-items: stretch;
   gap: 10px;
@@ -356,7 +352,7 @@ const visibleShortcuts = computed(() => shortcuts.filter((s) => s.roles.includes
 }
 
 @media (max-width: 900px) {
-  .grid {
+  .grid.one {
     grid-template-columns: minmax(0, 1fr);
   }
 }
@@ -365,11 +361,10 @@ const visibleShortcuts = computed(() => shortcuts.filter((s) => s.roles.includes
     padding: 22px 18px;
   }
   .grid.shortcuts {
+    grid-template-columns: minmax(0, 1fr); /* mobile : 1 colonne, cartes plus compactes */
     gap: 12px;
   }
   .shortcut {
-    flex-basis: 100%; /* mobile : 1 colonne, cartes plus compactes */
-    max-width: none;
     min-height: 0;
     padding: 18px;
   }

@@ -42,7 +42,7 @@
 }
 .card {
   width: 100%;
-  max-width: 420px;
+  max-width: 460px;
   padding: 36px 32px;
   border-radius: 16px;
   background: var(--surface);

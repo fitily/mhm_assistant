@@ -185,12 +185,12 @@ watch(
 }
 
 .fullscreen .messages {
-  width: min(100%, 980px);
+  width: min(100%, 1120px);
   align-self: center;
   padding: 28px 24px 8px;
 }
 .fullscreen :deep(.input) {
-  width: min(100%, 980px);
+  width: min(100%, 1120px);
   align-self: center;
   border-top: 0;
   background: transparent;
