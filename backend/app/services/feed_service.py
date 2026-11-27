@@ -10,7 +10,13 @@ from typing import Callable
 import httpx
 
 from app.core.config import get_settings
-from app.domain.feeds.parser import parse_journal_feed, parse_msanp_news, parse_who_afro_updates, parse_who_news
+from app.domain.feeds.parser import (
+    WHO_NEWS_API,
+    parse_journal_feed,
+    parse_msanp_news,
+    parse_who_afro_updates,
+    parse_who_news,
+)
 
 log = logging.getLogger("mhm.feeds")
 
@@ -52,8 +58,10 @@ async def _fetch_source(
     label: str,
     url: str,
     parse: Callable[[str], list[dict]],
+    fetch_url: str | None = None,
 ) -> tuple[dict, list[dict]]:
-    content = await _get_text(client, url)
+    """`url` est le lien affiché aux utilisateurs ; `fetch_url` (si différent) est l'adresse réellement lue."""
+    content = await _get_text(client, fetch_url or url)
     return {"key": key, "label": label, "url": url, "connected": True}, parse(content)
 
 
@@ -64,6 +72,7 @@ def _sources() -> tuple[dict, ...]:
             "key": "who",
             "label": "WHO",
             "url": "https://www.who.int/news",
+            "fetch_url": WHO_NEWS_API,  # la page HTML est construite par JavaScript : on lit l'API qui la remplit
             "parse": parse_who_news,
         },
         {
@@ -100,7 +109,7 @@ async def _fetch_all() -> dict:
     sources = _sources()
     headers = {
         "User-Agent": "MHM-Ambovo-Health-News/1.0",
-        "Accept": "text/html, application/rss+xml, application/xml;q=0.9, */*;q=0.8",
+        "Accept": "application/json, text/html, application/rss+xml, application/xml;q=0.9, */*;q=0.8",
     }
     async with httpx.AsyncClient(timeout=_TIMEOUT, follow_redirects=True, headers=headers) as client:
         results = await asyncio.gather(
@@ -111,6 +120,7 @@ async def _fetch_all() -> dict:
                     label=source["label"],
                     url=source["url"],
                     parse=source["parse"],
+                    fetch_url=source.get("fetch_url"),
                 )
                 for source in sources
             ),

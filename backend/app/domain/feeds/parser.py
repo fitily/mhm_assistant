@@ -1,6 +1,7 @@
 """Parsers for the public WHO and journal news feeds."""
 from __future__ import annotations
 
+import json
 import re
 import unicodedata
 from dataclasses import dataclass, field
@@ -151,63 +152,46 @@ def _article(
     }
 
 
-def parse_who_news(html: str) -> list[dict]:
-    parser = _TreeParser()
-    parser.feed(html)
+WHO_NEWS_API = (
+    "https://www.who.int/api/hubs/newsitems?sf_site=15210d59-ad60-47ff-a542-7ed76645f0c7"
+    "&sf_provider=OpenAccessDataProvider&sf_culture=en&$orderby=PublicationDateAndTime%20desc"
+    "&$select=Title,ItemDefaultUrl,FormatedDate,Tag,ThumbnailUrl&$top=60"
+)
+
+
+def parse_who_news(content: str) -> list[dict]:
+    """Actualités de l'OMS, lues dans l'API JSON qui alimente https://www.who.int/news.
+
+    La page HTML est construite par JavaScript (la liste n'y figure pas) et le flux RSS n'est ni trié ni à jour.
+    Chaque élément : {Title, ItemDefaultUrl, FormatedDate, Tag, ThumbnailUrl}.
+    """
+    try:
+        items = json.loads(content).get("value")
+    except (ValueError, AttributeError):
+        raise ValueError("WHO news API: invalid JSON") from None
+    if not isinstance(items, list):
+        raise ValueError("WHO news API: unexpected format")
     articles = []
-    for card in _elements(parser.root, "div"):
-        if not _has_class(card, "list-view--item"):
+    for item in items:
+        if not isinstance(item, dict):
             continue
-        link = next(
-            (
-                node for node in _elements(card, "a")
-                if "/news/item/" in node.attrs.get("href", "")
-            ),
-            None,
-        )
-        if link is None:
+        title = str(item.get("Title") or "").strip()
+        path = str(item.get("ItemDefaultUrl") or "").strip()
+        if not title or not path.startswith("/") or str(item.get("Tag") or "").casefold() == "employment":
             continue
-        url = _safe_url(link.attrs.get("href", ""), "https://www.who.int/news", ".who.int")
-        heading = next((node for node in _elements(card) if _has_class(node, "heading")), None)
-        title = _text(heading) if heading else link.attrs.get("aria-label", "").strip()
-        if not url or not title:
+        url = _safe_url("https://www.who.int/news/item" + path, "https://www.who.int", ".who.int")
+        if not url:
             continue
-        type_node = next(
-            (node for node in _elements(card) if _has_class(node, "sf-tags-list-item")),
-            None,
-        )
-        if type_node and _text(type_node).casefold() == "employment":
-            continue
-        date_node = next((node for node in _elements(card) if _has_class(node, "timestamp")), None)
-        summary_node = next(
-            (
-                node for node in _elements(card)
-                if any(_has_class(node, name) for name in ("summary", "description", "abstract"))
-            ),
-            None,
-        )
-        image_node = next(
-            (node for node in _elements(card) if node.attrs.get("data-image")),
-            None,
-        )
-        if image_node is None:
-            image_node = next((node for node in _elements(card, "img") if node.attrs.get("src")), None)
-        image = None
-        if image_node:
-            image = _safe_url(
-                image_node.attrs.get("data-image") or image_node.attrs.get("src", ""),
-                "https://www.who.int/news",
-                ".who.int",
-            )
+        thumbnail = str(item.get("ThumbnailUrl") or "")
         articles.append(
             _article(
                 title=title,
                 url=url,
-                summary=_text(summary_node) if summary_node else "",
+                summary="",
                 source="WHO",
-                published_at=_date(_text(date_node)) if date_node else None,
+                published_at=_date(str(item.get("FormatedDate") or "")),
                 category="update",
-                image=image,
+                image=_safe_url(thumbnail, "https://www.who.int", ".who.int") if thumbnail else None,
             )
         )
     return articles

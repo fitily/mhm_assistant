@@ -23,13 +23,13 @@ async def main() -> int:
     start, end = feed_service.news_window()
     print(f"Période affichée : du {start:%d/%m/%Y %H:%M} UTC au {end:%d/%m/%Y %H:%M} UTC\n")
     headers = {"User-Agent": "MHM-Ambovo-Health-News/1.0",
-               "Accept": "text/html, application/rss+xml, application/xml;q=0.9, */*;q=0.8"}
+               "Accept": "application/json, text/html, application/rss+xml, application/xml;q=0.9, */*;q=0.8"}
     total = Counter()
     async with httpx.AsyncClient(timeout=feed_service._TIMEOUT, follow_redirects=True, headers=headers) as client:
         for src in feed_service._sources():
             print(f"== {src['label']}  ({src['url']})")
             try:
-                text = await feed_service._get_text(client, src["url"])
+                text = await feed_service._get_text(client, src.get("fetch_url") or src["url"])
                 articles = src["parse"](text)
             except httpx.HTTPStatusError as exc:
                 print(f"   ECHEC : la source répond HTTP {exc.response.status_code}\n")

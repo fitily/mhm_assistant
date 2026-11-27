@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import datetime as dt
+import json
 
 import httpx
 import pytest
@@ -15,30 +16,33 @@ from app.services import auth_service, feed_service
 from app.domain.feeds.parser import parse_journal_feed, parse_who_afro_updates, parse_who_news
 
 
-def test_who_news_parser_extracts_article_metadata_and_skips_employment():
-    html = """
-    <div class="list-view--item">
-      <a href="/news/item/24-11-2026-example" aria-label="WHO health announcement">
-        <div class="date"><span class="timestamp">24 November 2026</span>
-          <div class="sf-tags-list-item">News release</div></div>
-        <p class="heading">WHO health announcement</p>
-        <div class="background-image" data-image="https://cdn.who.int/health.jpg"></div>
-      </a>
-    </div>
-    <div class="list-view--item">
-      <a href="/news/item/24-11-2026-jobs"><div class="sf-tags-list-item">Employment</div>
-        <p class="heading">Call for consultant</p></a>
-    </div>
-    """
+def test_who_news_parser_reads_the_json_api_and_skips_employment():
+    payload = json.dumps({"value": [
+        {"Title": "WHO health announcement", "ItemDefaultUrl": "/24-11-2026-example",
+         "FormatedDate": "24 November 2026", "Tag": "News release",
+         "ThumbnailUrl": "https://cdn.who.int/health.jpg?sfvrsn=1"},
+        {"Title": "Call for consultant", "ItemDefaultUrl": "/24-11-2026-jobs",
+         "FormatedDate": "24 November 2026", "Tag": "Employment", "ThumbnailUrl": None},
+        {"Title": "Off-site link", "ItemDefaultUrl": "https://evil.example/x", "FormatedDate": "24 November 2026"},
+        {"Title": "No thumbnail", "ItemDefaultUrl": "/23-11-2026-plain", "FormatedDate": "23 November 2026"},
+        "not an object",
+    ]})
 
-    articles = parse_who_news(html)
+    articles = parse_who_news(payload)
 
-    assert len(articles) == 1
-    assert articles[0]["title"] == "WHO health announcement"
-    assert articles[0]["source"] == "WHO"
-    assert articles[0]["category"] == "update"
-    assert articles[0]["published_at"] == "2026-11-24T00:00:00+00:00"
-    assert articles[0]["image"] == "https://cdn.who.int/health.jpg"
+    assert [a["title"] for a in articles] == ["WHO health announcement", "No thumbnail"]
+    first = articles[0]
+    assert first["url"] == "https://www.who.int/news/item/24-11-2026-example"
+    assert first["source"] == "WHO" and first["category"] == "update"
+    assert first["published_at"] == "2026-11-24T00:00:00+00:00"
+    assert first["image"] == "https://cdn.who.int/health.jpg?sfvrsn=1"
+    assert articles[1]["image"] is None
+
+
+@pytest.mark.parametrize("content", ["<html>JS page</html>", "[]", '{"value": "x"}', ""])
+def test_who_news_parser_rejects_unexpected_content(content):
+    with pytest.raises(ValueError):
+        parse_who_news(content)
 
 
 def test_who_africa_parser_keeps_emergency_news_and_skips_other_articles():
@@ -162,7 +166,7 @@ def test_news_endpoint_reports_when_all_sources_are_unavailable(client, monkeypa
 
 
 def test_feed_service_returns_available_sources_when_one_source_fails(monkeypatch):
-    async def fetch_source(client, *, key, label, url, parse):
+    async def fetch_source(client, *, key, label, url, parse, fetch_url=None):
         if key == "who":
             raise httpx.ConnectError("source unavailable")
         return (
